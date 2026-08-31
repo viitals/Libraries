@@ -419,6 +419,46 @@ function ESP:Wts(World)
 	return Vec(V.X, V.Y), On, V.Z
 end
 
+local BodyPart = {
+	['Head'] = true,
+	['Torso'] = true,
+	['UpperTorso'] = true,
+	['LowerTorso'] = true,
+	['LeftArm'] = true,
+	['RightArm'] = true,
+	['Left Arm'] = true,
+	['Right Arm'] = true,
+	['LeftLeg'] = true,
+	['RightLeg'] = true,
+	['Left Leg'] = true,
+	['Right Leg'] = true,
+	['LeftUpperArm'] = true,
+	['RightUpperArm'] = true,
+	['LeftLowerArm'] = true,
+	['RightLowerArm'] = true,
+	['LeftHand'] = true,
+	['RightHand'] = true,
+	['LeftUpperLeg'] = true,
+	['RightUpperLeg'] = true,
+	['LeftLowerLeg'] = true,
+	['RightLowerLeg'] = true,
+	['LeftFoot'] = true,
+	['RightFoot'] = true,
+}
+
+local BoxVerts = {
+	Vector3.new(-1, -1, -1),
+	Vector3.new(-1, 1, -1),
+	Vector3.new(-1, 1, 1),
+	Vector3.new(-1, -1, 1),
+	Vector3.new(1, -1, -1),
+	Vector3.new(1, 1, -1),
+	Vector3.new(1, 1, 1),
+	Vector3.new(1, -1, 1),
+}
+
+ESP.PartBag = setmetatable({}, { __mode = 'k' })
+
 function ESP:IsRagdolled(Hum)
 	if not Hum then
 		return false
@@ -429,126 +469,110 @@ function ESP:IsRagdolled(Hum)
 	return State == HS.Ragdoll or State == HS.Physics or State == HS.GettingUp or State == HS.FallingDown
 end
 
-function ESP:BoxFromWorld(CF, Size)
-	local HX, HY, HZ = Size.X / 2, Size.Y / 2, Size.Z / 2
-	local MinX, MinY = math.huge, math.huge
-	local MaxX, MaxY = -math.huge, -math.huge
-	local Any = false
+function ESP:BodyParts(Char)
+	local Children = Char:GetChildren()
+	local Count = #Children
+	local Hit = self.PartBag[Char]
+	if Hit and Hit.N == Count then
+		return Hit.Parts
+	end
 
-	for X = -1, 1, 2 do
-		for Y = -1, 1, 2 do
-			for Z = -1, 1, 2 do
-				local Scr, On, Dep = self:Wts((CF * CFrame.new(HX * X, HY * Y, HZ * Z)).Position)
-				if On and Dep > 0 then
-					Any = true
-					MinX = math.min(MinX, Scr.X)
-					MinY = math.min(MinY, Scr.Y)
-					MaxX = math.max(MaxX, Scr.X)
-					MaxY = math.max(MaxY, Scr.Y)
-				end
-			end
+	local Parts = {}
+	for I = 1, Count do
+		local Part = Children[I]
+		if Part:IsA('BasePart') and BodyPart[Part.Name] then
+			Parts[#Parts + 1] = Part
 		end
 	end
 
-	if not Any then
-		return
-	end
-
-	local W = math.max(math.floor(MaxX - MinX + 0.5), 3)
-	local H = math.max(math.floor(MaxY - MinY + 0.5), 3)
-
-	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
+	self.PartBag[Char] = { N = Count, Parts = Parts }
+	return Parts
 end
 
-function ESP:BoxFromParts(Char)
-	local MinX, MinY = math.huge, math.huge
-	local MaxX, MaxY = -math.huge, -math.huge
-	local Any = false
-
-	for _, Part in Char:GetChildren() do
-		if Part:IsA('BasePart') and Part.Name ~= 'HumanoidRootPart' then
-			local CF, Size = Part.CFrame, Part.Size
-			local HX, HY, HZ = Size.X / 2, Size.Y / 2, Size.Z / 2
-
-			for X = -1, 1, 2 do
-				for Y = -1, 1, 2 do
-					for Z = -1, 1, 2 do
-						local Scr, On, Dep = self:Wts((CF * CFrame.new(HX * X, HY * Y, HZ * Z)).Position)
-						if On and Dep > 0 then
-							Any = true
-							MinX = math.min(MinX, Scr.X)
-							MinY = math.min(MinY, Scr.Y)
-							MaxX = math.max(MaxX, Scr.X)
-							MaxY = math.max(MaxY, Scr.Y)
-						end
-					end
-				end
-			end
-		end
-	end
-
-	if not Any then
+function ESP:StableBounds(Root)
+	local Center = Root.Position - Vector3.new(0, 0.25, 0)
+	local Screen, On, Depth = self:Wts(Center)
+	if not On or not Depth or Depth <= 0.15 then
 		return
 	end
 
-	local W = math.max(math.floor(MaxX - MinX + 0.5), 3)
-	local H = math.max(math.floor(MaxY - MinY + 0.5), 3)
+	local Px = self.Px
+	if not Px then
+		Px = Cam.ViewportSize.Y / (2 * math.tan(math.rad(Cam.FieldOfView) * 0.5))
+	end
 
-	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
+	local H = math.max(math.floor((self.Height / Depth) * Px + 0.5), 4)
+	local W = math.max(math.floor(H * (self.Width / self.Height) + 0.5), 4)
+
+	return Vec(math.floor(Screen.X - W * 0.5 + 0.5), math.floor(Screen.Y - H * 0.5 + 0.5)), Vec(W, H)
 end
 
 function ESP:DynamicBounds(Char)
-	local Ok, CF, Size = pcall(function()
-		return Char:GetBoundingBox()
-	end)
+	local Parts = self:BodyParts(Char)
+	if not Parts[1] then
+		return
+	end
 
-	if Ok and CF and Size then
-		local Pos, BoxSize = self:BoxFromWorld(CF, Size)
-		if Pos then
-			return Pos, BoxSize
+	local Min3, Max3
+	for I = 1, #Parts do
+		local Part = Parts[I]
+		local CF, Size = Part.CFrame, Part.Size
+		local A = (CF - Size * 0.5).Position
+		local B = (CF + Size * 0.5).Position
+		if Min3 then
+			Min3 = Vector3.new(math.min(Min3.X, A.X, B.X), math.min(Min3.Y, A.Y, B.Y), math.min(Min3.Z, A.Z, B.Z))
+			Max3 = Vector3.new(math.max(Max3.X, A.X, B.X), math.max(Max3.Y, A.Y, B.Y), math.max(Max3.Z, A.Z, B.Z))
+		else
+			Min3 = Vector3.new(math.min(A.X, B.X), math.min(A.Y, B.Y), math.min(A.Z, B.Z))
+			Max3 = Vector3.new(math.max(A.X, B.X), math.max(A.Y, B.Y), math.max(A.Z, B.Z))
 		end
 	end
 
-	return self:BoxFromParts(Char)
+	local Center = (Min3 + Max3) * 0.5
+	local Half = (Max3 - Min3) * 0.5
+	local MinX, MinY = math.huge, math.huge
+	local MaxX, MaxY = -math.huge, -math.huge
+	local Hits = 0
+
+	for I = 1, 8 do
+		local Scr, _, Dep = self:Wts(Center + Half * BoxVerts[I])
+		if Dep and Dep > 0.15 then
+			Hits += 1
+			MinX = math.min(MinX, Scr.X)
+			MinY = math.min(MinY, Scr.Y)
+			MaxX = math.max(MaxX, Scr.X)
+			MaxY = math.max(MaxY, Scr.Y)
+		end
+	end
+
+	if Hits < 2 then
+		return
+	end
+
+	local Vp = self.Vp or Cam.ViewportSize
+	local W = math.max(math.floor(MaxX - MinX + 0.5), 4)
+	local H = math.max(math.floor(MaxY - MinY + 0.5), 4)
+	if W > Vp.X or H > Vp.Y then
+		return
+	end
+
+	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
 end
 
-function ESP:Bounds(Char, Root)
-	local Hum = Char:FindFirstChildOfClass('Humanoid')
-	local UseDynamic = self:Get('Box_Dynamic') or self:IsRagdolled(Hum)
-
-	if UseDynamic then
-		return self:DynamicBounds(Char)
+function ESP:Bounds(Char, Root, Ragdoll)
+	if Ragdoll == nil then
+		local Hum = Char:FindFirstChildOfClass('Humanoid')
+		Ragdoll = self:IsRagdolled(Hum)
 	end
 
-	local Origin = Root.Position
-	local Center, OnC, ZC = self:Wts(Origin)
-	if not OnC or ZC <= 0 then
-		return self:DynamicBounds(Char)
+	if self:Get('Box_Dynamic') or Ragdoll then
+		local Pos, Size = self:DynamicBounds(Char)
+		if Pos then
+			return Pos, Size
+		end
 	end
 
-	local Half = self.Height / 2
-	local WorldUp = Vector3.yAxis
-	local Head = Char:FindFirstChild('Head')
-	local TopPos = Head and (Head.Position + WorldUp * (Head.Size.Y * 0.5)) or (Origin + WorldUp * Half)
-	local Down = Half
-	if Hum then
-		Down = math.max(Down, Hum.HipHeight + Root.Size.Y * 0.5)
-	end
-	local BotPos = Origin - WorldUp * (Down + 0.35)
-
-	local Top, _, ZT = self:Wts(TopPos)
-	local Bot, _, ZB = self:Wts(BotPos)
-
-	if ZT <= 0 and ZB <= 0 then
-		return self:DynamicBounds(Char)
-	end
-
-	local H = math.max(math.floor(math.abs(Bot.Y - Top.Y) + 0.5), 3)
-	local W = math.max(math.floor(H * (self.Width / self.Height) + 0.5), 3)
-	local X = math.floor(Center.X - W * 0.5 + 0.5)
-	local Y = math.floor(math.min(Top.Y, Bot.Y) + 0.5)
-
-	return Vec(X, Y), Vec(W, H)
+	return self:StableBounds(Root)
 end
 
 function ESP:Tool(Char)
@@ -591,7 +615,10 @@ function ESP:Data(Plr)
 		return
 	end
 
-	local BoxPos, BoxSize = self:Bounds(Char, Root)
+	local State = Hum:GetState()
+	local HS = Enum.HumanoidStateType
+	local Ragdoll = self:IsRagdolled(Hum)
+	local BoxPos, BoxSize = self:Bounds(Char, Root, Ragdoll)
 	if not BoxPos then
 		return
 	end
@@ -601,11 +628,8 @@ function ESP:Data(Plr)
 	local Armor = Hum:GetAttribute('Armor') or Char:GetAttribute('Armor') or 0
 	local MaxArmor = Hum:GetAttribute('MaxArmor') or Char:GetAttribute('MaxArmor') or 100
 	local APct = MaxArmor > 0 and math.clamp(Armor / MaxArmor, 0, 1) or 0
-	local State = Hum:GetState()
-	local Tool = self:Tool(Char)
-	local HS = Enum.HumanoidStateType
+	local Tool = self:Get('Weapon') and self:Tool(Char) or ''
 	local Air = State == HS.Freefall or State == HS.FallingDown or State == HS.Jumping
-	local Ragdoll = self:IsRagdolled(Hum)
 	local Climbing = State == HS.Climbing
 	local Swimming = State == HS.Swimming
 	local Seated = State == HS.Seated or Hum.Sit
@@ -1129,6 +1153,7 @@ function ESP.Circ:New(Gui)
 	Self.Stroke = Inst('UIStroke', {
 		Parent = Root,
 		Color = Rgb(255, 255, 255),
+		Thickness = 1.1,
 	})
 
 	Self.Inner = Inst('Frame', {
@@ -1719,8 +1744,10 @@ end
 
 function ESP:Pack()
 	self.Bag = {}
+	self.Vp = Cam.ViewportSize
+	self.Px = self.Vp.Y / (2 * math.tan(math.rad(Cam.FieldOfView) * 0.5))
 
-	local Vp = Cam.ViewportSize
+	local Vp = self.Vp
 	local Origin = self:Get('Tracer_Origin') or 'Bottom'
 	if Origin == 'Top' then
 		self.From = Vec(Vp.X * 0.5, 0)
