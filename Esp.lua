@@ -116,10 +116,17 @@ local Tween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
 
 local function SampleGrad(Colors, Stops, T)
 	T = math.clamp(T, 0, 1)
+	local Last = #Colors
+	if Last == 0 then
+		return Rgb(255, 255, 255)
+	end
+	if Last == 1 then
+		return Colors[1]
+	end
 
-	for I = 1, #Colors - 1 do
-		local T0 = Stops[I]
-		local T1 = Stops[I + 1]
+	for I = 1, Last - 1 do
+		local T0 = Stops and Stops[I] or ((I - 1) / (Last - 1))
+		local T1 = Stops and Stops[I + 1] or (I / (Last - 1))
 
 		if T >= T0 and T <= T1 then
 			local A = T1 > T0 and (T - T0) / (T1 - T0) or 0
@@ -127,7 +134,7 @@ local function SampleGrad(Colors, Stops, T)
 		end
 	end
 
-	return Colors[#Colors]
+	return Colors[Last]
 end
 
 local FillTrans = {
@@ -464,13 +471,38 @@ local BoxVerts = {
 
 ESP.PartBag = setmetatable({}, { __mode = 'k' })
 
-function ESP:IsRagdolled(Hum)
+function ESP:IsRagdolled(Hum, Char)
 	if not Hum then
+		return false
+	end
+
+	if Hum.Sit or Hum.SeatPart then
 		return false
 	end
 
 	local State = Hum:GetState()
 	local HS = Enum.HumanoidStateType
+	if State == HS.Seated then
+		return false
+	end
+
+	Char = Char or Hum.Parent
+	local Root = Char and Char:FindFirstChild('HumanoidRootPart')
+	if (Char and Char:FindFirstChild('SeatWeld')) or (Root and Root:FindFirstChild('SeatWeld')) then
+		return false
+	end
+
+	if Root then
+		for _, Joint in Root:GetChildren() do
+			if Joint:IsA('Weld') or Joint:IsA('WeldConstraint') or Joint:IsA('Motor6D') then
+				local Other = (Joint.Part0 == Root and Joint.Part1) or (Joint.Part1 == Root and Joint.Part0)
+				if Other and (Other:IsA('Seat') or Other:IsA('VehicleSeat')) then
+					return false
+				end
+			end
+		end
+	end
+
 	return State == HS.Ragdoll or State == HS.Physics or State == HS.GettingUp or State == HS.FallingDown
 end
 
@@ -567,7 +599,7 @@ end
 function ESP:Bounds(Char, Root, Ragdoll)
 	if Ragdoll == nil then
 		local Hum = Char:FindFirstChildOfClass('Humanoid')
-		Ragdoll = self:IsRagdolled(Hum)
+		Ragdoll = self:IsRagdolled(Hum, Char)
 	end
 
 	if self:Get('Box_Dynamic') or Ragdoll then
@@ -622,7 +654,7 @@ function ESP:Data(Plr)
 
 	local State = Hum:GetState()
 	local HS = Enum.HumanoidStateType
-	local Ragdoll = self:IsRagdolled(Hum)
+	local Ragdoll = self:IsRagdolled(Hum, Char)
 	local BoxPos, BoxSize = self:Bounds(Char, Root, Ragdoll)
 	if not BoxPos then
 		return
@@ -637,7 +669,7 @@ function ESP:Data(Plr)
 	local Air = State == HS.Freefall or State == HS.FallingDown or State == HS.Jumping
 	local Climbing = State == HS.Climbing
 	local Swimming = State == HS.Swimming
-	local Seated = State == HS.Seated or Hum.Sit
+	local Seated = State == HS.Seated or Hum.Sit or Hum.SeatPart ~= nil
 	local Flying = State == HS.Flying
 	local Moving = Hum.MoveDirection.Magnitude > 0.05
 
@@ -1318,8 +1350,20 @@ function ESP.Bar:New(Back, Fill, Text, Vert)
 	return Self
 end
 
-function ESP.Bar:SetGrad(Colors, Stops)
-	local Key = ''
+function ESP.Bar:SetGrad(Colors, Stops, From, To)
+	if not self.Grad then
+		return
+	end
+
+	From = math.clamp(From or 0, 0, 1)
+	To = math.clamp(To or 1, 0, 1)
+	if To <= From then
+		To = math.min(From + 0.001, 1)
+	end
+
+	local QFrom = math.floor(From * 40 + 0.5)
+	local QTo = math.floor(To * 40 + 0.5)
+	local Key = tostring(QFrom) .. ':' .. tostring(QTo)
 	for _, Col in Colors do
 		Key = Key .. tostring(Col)
 	end
@@ -1330,11 +1374,20 @@ function ESP.Bar:SetGrad(Colors, Stops)
 
 	self.GradKey = Key
 
-	local Keys = {}
-	for I, Col in Colors do
-		table.insert(Keys, ColorSequenceKeypoint.new(Stops and Stops[I] or ((I - 1) / math.max(#Colors - 1, 1)), Col))
+	local Span = To - From
+	local Points = {
+		ColorSequenceKeypoint.new(0, SampleGrad(Colors, Stops, From)),
+	}
+
+	for I = 1, #Colors do
+		local T = Stops and Stops[I] or ((I - 1) / math.max(#Colors - 1, 1))
+		if T > From + 0.001 and T < To - 0.001 then
+			Points[#Points + 1] = ColorSequenceKeypoint.new((T - From) / Span, Colors[I])
+		end
 	end
-	self.Grad.Color = ColorSequence.new(Keys)
+
+	Points[#Points + 1] = ColorSequenceKeypoint.new(1, SampleGrad(Colors, Stops, To))
+	self.Grad.Color = ColorSequence.new(Points)
 end
 
 function ESP.Bar:Draw(On, Pct, Val, Cfg)
@@ -1342,7 +1395,11 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg)
 	if not On then return end
 
 	Pct = math.clamp(Pct or 0, 0, 1)
-	self:SetGrad(Cfg.Colors, Cfg.Stops)
+	if self.Vert then
+		self:SetGrad(Cfg.Colors, Cfg.Stops, 1 - Pct, 1)
+	else
+		self:SetGrad(Cfg.Colors, Cfg.Stops, 0, 1)
+	end
 
 	local Size, Position
 	if self.Vert then
@@ -1357,7 +1414,7 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg)
 		if Position then
 			self.Fill.Position = Position
 		end
-	elseif self.Last ~= Pct then
+	elseif math.abs(self.Last - Pct) >= 0.01 then
 		if self.Tween then
 			self.Tween:Cancel()
 		end
@@ -1375,7 +1432,7 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg)
 
 	Val = Val or math.floor(Pct * 100 + 0.5)
 	if self.Text then
-		Set(self.Text, 'Visible', Cfg.Text and Val < 100)
+		Set(self.Text, 'Visible', Cfg.Text and Val ~= 0 and Val ~= 100)
 
 		local Col = Cfg.TextCol
 		if Cfg.Dynamic and Cfg.Colors and Cfg.Stops then
@@ -1856,11 +1913,18 @@ function ESP:Step()
 	self:Pack()
 
 	local HL = self:Get('Highlights')
+	local Menu = getgenv().Library
+	local MenuOpen = Menu and Menu.Window and Menu.Window.Open
 
 	for Plr, Obj in self.Objects do
 		local Data = self:Data(Plr)
 		if Data then
 			Obj:Render(self, Data)
+			if MenuOpen then
+				Obj.Parts.Skel:Hide()
+				Obj.Parts.Look:Hide()
+				Obj.Parts.Trace:Hide()
+			end
 		else
 			Set(Obj.Root, 'Visible', false)
 			Obj.Parts.Skel:Hide()
@@ -1868,15 +1932,6 @@ function ESP:Step()
 			Obj.Parts.Trace:Hide()
 			Obj.Parts.Look:Hide()
 			Obj.Parts.HL:Draw(self, HL, Plr.Character)
-		end
-	end
-
-	local Menu = getgenv().Library
-	if Menu and Menu.Window and Menu.Window.Open then
-		for _, Obj in self.Objects do
-			Obj.Parts.Skel:Hide()
-			Obj.Parts.Look:Hide()
-			Obj.Parts.Trace:Hide()
 		end
 	end
 end
@@ -1913,7 +1968,7 @@ function ESP:Init(ExtFlags)
 		self:Rem(Plr)
 	end))
 
-	table.insert(self.Conns, Run.RenderStepped:Connect(function()
+	table.insert(self.Conns, Run.Heartbeat:Connect(function()
 		self:Step()
 	end))
 
