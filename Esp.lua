@@ -320,6 +320,7 @@ end
 local function Line()
 	local Obj = Drawing.new('Line')
 	Obj.Thickness = 1
+	Obj.Transparency = 0
 	Obj.Visible = false
 	return Obj
 end
@@ -1450,24 +1451,28 @@ function ESP.Skel:New()
 end
 
 function ESP.Skel:Boot()
-	if self.Lines then
-		return
+	if not self.Lines then
+		self.Lines = table.create(BoneMax)
 	end
 
-	self.Lines = table.create(BoneMax)
-	self.Back = table.create(BoneMax)
+	if not self.Back then
+		self.Back = table.create(BoneMax)
+	end
 
 	for I = 1, BoneMax do
-		local Back = Line()
-		Back.ZIndex = 1
-		Back.Thickness = 3
+		if not self.Back[I] then
+			local Back = Line()
+			Back.Thickness = 3
+			Back.ZIndex = 1
+			self.Back[I] = Back
+		end
 
-		local LineObj = Line()
-		LineObj.ZIndex = 2
-		LineObj.Thickness = 1
-
-		self.Back[I] = Back
-		self.Lines[I] = LineObj
+		if not self.Lines[I] then
+			local LineObj = Line()
+			LineObj.Thickness = 1
+			LineObj.ZIndex = 2
+			self.Lines[I] = LineObj
+		end
 	end
 end
 
@@ -1494,7 +1499,6 @@ function ESP.Skel:Draw(Esp, On, Data)
 	local Char = Data.Char
 	local Rig = Char:FindFirstChild('UpperTorso') and Bones.R15 or Bones.R6
 	local Col = Esp:Color('Skeleton_Color', Rgb(255, 255, 255))
-	local Outline = Esp:Get('Skeleton_Outline') ~= false
 	local OutlineCol = Esp:Color('Skeleton_Outline_Color', Rgb(0, 0, 0))
 
 	for I = 1, BoneMax do
@@ -1514,12 +1518,7 @@ function ESP.Skel:Draw(Esp, On, Data)
 		local Finish, OnB = ESP:Wts(To)
 
 		if OnA and OnB then
-			if Outline then
-				StrokeLine(Back, Start, Finish, OutlineCol, 3)
-			else
-				Set(Back, 'Visible', false)
-			end
-
+			StrokeLine(Back, Start, Finish, OutlineCol, 3)
 			StrokeLine(LineObj, Start, Finish, Col, 1)
 		else
 			Set(LineObj, 'Visible', false)
@@ -1657,17 +1656,17 @@ function ESP.Look:New()
 end
 
 function ESP.Look:Boot()
-	if self.Line then
-		return
+	if not self.Back then
+		self.Back = Line()
+		self.Back.Thickness = 3
+		self.Back.ZIndex = 1
 	end
 
-	self.Back = Line()
-	self.Back.ZIndex = 1
-	self.Back.Thickness = 3
-
-	self.Line = Line()
-	self.Line.ZIndex = 2
-	self.Line.Thickness = 1
+	if not self.Line then
+		self.Line = Line()
+		self.Line.Thickness = 1
+		self.Line.ZIndex = 2
+	end
 end
 
 function ESP.Look:Hide()
@@ -1696,15 +1695,9 @@ function ESP.Look:Draw(Esp, On, Data)
 
 	local Col = Esp:Color('Look_Color', Rgb(255, 255, 255))
 	local Thick = Esp:Get('Look_Thickness') or 1
-	local Outline = Esp:Get('Look_Outline') ~= false
 	local OutlineCol = Esp:Color('Look_Outline_Color', Rgb(0, 0, 0))
 
-	if Outline then
-		StrokeLine(self.Back, Start, Finish, OutlineCol, Thick + 2)
-	else
-		Set(self.Back, 'Visible', false)
-	end
-
+	StrokeLine(self.Back, Start, Finish, OutlineCol, Thick + 2)
 	StrokeLine(self.Line, Start, Finish, Col, Thick)
 end
 
@@ -1877,6 +1870,15 @@ function ESP:Step()
 			Obj.Parts.HL:Draw(self, HL, Plr.Character)
 		end
 	end
+
+	local Menu = getgenv().Library
+	if Menu and Menu.Window and Menu.Window.Open then
+		for _, Obj in self.Objects do
+			Obj.Parts.Skel:Hide()
+			Obj.Parts.Look:Hide()
+			Obj.Parts.Trace:Hide()
+		end
+	end
 end
 
 function ESP:Init(ExtFlags)
@@ -1891,7 +1893,7 @@ function ESP:Init(ExtFlags)
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		DisplayOrder = 999,
+		DisplayOrder = 1,
 		Parent = Hui,
 	})
 
