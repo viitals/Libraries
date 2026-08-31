@@ -38,7 +38,6 @@ local ESP = {
 	Height = 6,
 	Width = 4,
 
-	-- // making it compatible with the ui library finobe made for me >:)
 	Flags = {
 		['Enabled'] = true,
 		['Names'] = true,
@@ -93,7 +92,7 @@ local ESP = {
 		['Highlight_Depth'] = 'AlwaysOnTop',
 		['Tracers'] = false,
 		['Tracer_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['Tracer_Origin'] = 'Bottom', -- Bottom, Top, Mouse
+		['Tracer_Origin'] = 'Bottom',
 		['Tracer_Thickness'] = 1,
 		['Tracer_Outline'] = true,
 		['Tracer_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
@@ -111,7 +110,6 @@ local Pos = UDim2.new
 local Vec = Vector2.new
 local Tween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- // mockup from studio lmfao
 local function SampleGrad(Colors, Stops, T)
 	T = math.clamp(T, 0, 1)
 
@@ -175,7 +173,6 @@ local Bones = {
 	},
 }
 
--- // r6 has no joint parts :(
 local Joints = {
 	Neck = { 'Torso', Vector3.new(0, 1, 0) },
 	Pelvis = { 'Torso', Vector3.new(0, -1, 0) },
@@ -252,7 +249,6 @@ if Ok then
 	ESP.Font = Tempesta
 end
 
--- // saucy asf
 local function Inst(Class, Props)
 	local Obj = Instance.new(Class)
 	for Key, Val in Props do
@@ -276,14 +272,12 @@ local function CloneTree(Src)
 	return Dst, Lookup
 end
 
--- // only write when its actually updating 4 better performance
 local function Set(Obj, Key, Val)
 	if Obj[Key] ~= Val then
 		Obj[Key] = Val
 	end
 end
 
--- // more performance shit
 local function Paint(Frame, Grad, On, Cfg)
 	if not On then
 		Set(Frame, 'BackgroundTransparency', 1)
@@ -340,7 +334,6 @@ local function StrokeLine(Obj, From, To, Col, Thick)
 	Set(Obj, 'Visible', true)
 end
 
--- // lazy slop
 local function Stroke(Parent)
 	return Inst('UIStroke', {
 		Parent = Parent,
@@ -426,50 +419,116 @@ function ESP:Wts(World)
 	return Vec(V.X, V.Y), On, V.Z
 end
 
-function ESP:Bounds(Char, Root)
-	if self:Get('Box_Dynamic') then
-		local CF, Size = Char:GetBoundingBox()
-		local HX, HY, HZ = Size.X / 2, Size.Y / 2, Size.Z / 2
-		local MinX, MinY = math.huge, math.huge
-		local MaxX, MaxY = -math.huge, -math.huge
-		local Any = false
+function ESP:IsRagdolled(Hum)
+	if not Hum then
+		return false
+	end
 
-		for X = -1, 1, 2 do
-			for Y = -1, 1, 2 do
-				for Z = -1, 1, 2 do
-					local Scr, On, Dep = self:Wts((CF * CFrame.new(HX * X, HY * Y, HZ * Z)).Position)
-					if On and Dep > 0 then
-						Any = true
-						MinX = math.min(MinX, Scr.X)
-						MinY = math.min(MinY, Scr.Y)
-						MaxX = math.max(MaxX, Scr.X)
-						MaxY = math.max(MaxY, Scr.Y)
+	local State = Hum:GetState()
+	local HS = Enum.HumanoidStateType
+	return State == HS.Ragdoll or State == HS.Physics or State == HS.GettingUp or State == HS.FallingDown
+end
+
+function ESP:BoxFromWorld(CF, Size)
+	local HX, HY, HZ = Size.X / 2, Size.Y / 2, Size.Z / 2
+	local MinX, MinY = math.huge, math.huge
+	local MaxX, MaxY = -math.huge, -math.huge
+	local Any = false
+
+	for X = -1, 1, 2 do
+		for Y = -1, 1, 2 do
+			for Z = -1, 1, 2 do
+				local Scr, On, Dep = self:Wts((CF * CFrame.new(HX * X, HY * Y, HZ * Z)).Position)
+				if On and Dep > 0 then
+					Any = true
+					MinX = math.min(MinX, Scr.X)
+					MinY = math.min(MinY, Scr.Y)
+					MaxX = math.max(MaxX, Scr.X)
+					MaxY = math.max(MaxY, Scr.Y)
+				end
+			end
+		end
+	end
+
+	if not Any then
+		return
+	end
+
+	local W = math.max(math.floor(MaxX - MinX + 0.5), 3)
+	local H = math.max(math.floor(MaxY - MinY + 0.5), 3)
+
+	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
+end
+
+function ESP:BoxFromParts(Char)
+	local MinX, MinY = math.huge, math.huge
+	local MaxX, MaxY = -math.huge, -math.huge
+	local Any = false
+
+	for _, Part in Char:GetChildren() do
+		if Part:IsA('BasePart') and Part.Name ~= 'HumanoidRootPart' then
+			local CF, Size = Part.CFrame, Part.Size
+			local HX, HY, HZ = Size.X / 2, Size.Y / 2, Size.Z / 2
+
+			for X = -1, 1, 2 do
+				for Y = -1, 1, 2 do
+					for Z = -1, 1, 2 do
+						local Scr, On, Dep = self:Wts((CF * CFrame.new(HX * X, HY * Y, HZ * Z)).Position)
+						if On and Dep > 0 then
+							Any = true
+							MinX = math.min(MinX, Scr.X)
+							MinY = math.min(MinY, Scr.Y)
+							MaxX = math.max(MaxX, Scr.X)
+							MaxY = math.max(MaxY, Scr.Y)
+						end
 					end
 				end
 			end
 		end
+	end
 
-		if not Any then
-			return
+	if not Any then
+		return
+	end
+
+	local W = math.max(math.floor(MaxX - MinX + 0.5), 3)
+	local H = math.max(math.floor(MaxY - MinY + 0.5), 3)
+
+	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
+end
+
+function ESP:DynamicBounds(Char)
+	local Ok, CF, Size = pcall(function()
+		return Char:GetBoundingBox()
+	end)
+
+	if Ok and CF and Size then
+		local Pos, BoxSize = self:BoxFromWorld(CF, Size)
+		if Pos then
+			return Pos, BoxSize
 		end
+	end
 
-		local W = math.max(math.floor(MaxX - MinX + 0.5), 3)
-		local H = math.max(math.floor(MaxY - MinY + 0.5), 3)
+	return self:BoxFromParts(Char)
+end
 
-		return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
+function ESP:Bounds(Char, Root)
+	local Hum = Char:FindFirstChildOfClass('Humanoid')
+	local UseDynamic = self:Get('Box_Dynamic') or self:IsRagdolled(Hum)
+
+	if UseDynamic then
+		return self:DynamicBounds(Char)
 	end
 
 	local Origin = Root.Position
 	local Center, OnC, ZC = self:Wts(Origin)
 	if not OnC or ZC <= 0 then
-		return
+		return self:DynamicBounds(Char)
 	end
 
-	-- // cuz of camera clip bull shit
 	local Half = self.Height / 2
 	local WorldUp = Vector3.yAxis
 	local Head = Char:FindFirstChild('Head')
-	local Hum = Char:FindFirstChildOfClass('Humanoid')
 	local TopPos = Head and (Head.Position + WorldUp * (Head.Size.Y * 0.5)) or (Origin + WorldUp * Half)
 	local Down = Half
 	if Hum then
@@ -481,7 +540,7 @@ function ESP:Bounds(Char, Root)
 	local Bot, _, ZB = self:Wts(BotPos)
 
 	if ZT <= 0 and ZB <= 0 then
-		return
+		return self:DynamicBounds(Char)
 	end
 
 	local H = math.max(math.floor(math.abs(Bot.Y - Top.Y) + 0.5), 3)
@@ -497,7 +556,6 @@ function ESP:Tool(Char)
 		if Child:IsA('Tool') then
 			local Name = Child.Name
 
-			-- // for games like DH that already use brackets
 			if Name:sub(1, 1) == '[' and Name:sub(-1) == ']' then
 				return Name
 			end
@@ -518,7 +576,18 @@ function ESP:Data(Plr)
 	local Hum = Char and Char:FindFirstChildOfClass('Humanoid')
 	local Root = Char and Char:FindFirstChild('HumanoidRootPart')
 
-	if not Char or not Hum or not Root or Hum.Health <= 0 then
+	if not Char or not Hum or Hum.Health <= 0 then
+		return
+	end
+
+	if not Root then
+		Root = Char:FindFirstChild('UpperTorso')
+			or Char:FindFirstChild('Torso')
+			or Char:FindFirstChild('LowerTorso')
+			or Char:FindFirstChild('Head')
+	end
+
+	if not Root then
 		return
 	end
 
@@ -536,7 +605,7 @@ function ESP:Data(Plr)
 	local Tool = self:Tool(Char)
 	local HS = Enum.HumanoidStateType
 	local Air = State == HS.Freefall or State == HS.FallingDown or State == HS.Jumping
-	local Ragdoll = State == HS.Ragdoll or State == HS.Physics or State == HS.GettingUp
+	local Ragdoll = self:IsRagdolled(Hum)
 	local Climbing = State == HS.Climbing
 	local Swimming = State == HS.Swimming
 	local Seated = State == HS.Seated or Hum.Sit
@@ -569,7 +638,6 @@ function ESP:Data(Plr)
 	}
 end
 
--- // codify plugin cause i was too lazy to do it myself
 function ESP:Build()
 	local Holder = Inst('Frame', {
 		Name = 'Holder',
@@ -1148,7 +1216,6 @@ function ESP.Head:Draw(Esp, On, Data)
 		return self:Hide()
 	end
 
-	-- // projecting a point on the head
 	local Edge = ESP:Wts(Part.Position + Cam.CFrame.RightVector * (Part.Size.X * 0.5))
 	local Rad = math.max(math.abs(Edge.X - Scr.X), 2)
 
@@ -1407,7 +1474,6 @@ function ESP.Skel:Draw(Esp, On, Data)
 	end
 end
 
--- // have to make this cuz drawings arent instances
 function ESP.Skel:Kill()
 	if self.Lines then
 		KillLines(self.Lines)
