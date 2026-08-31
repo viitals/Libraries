@@ -83,6 +83,8 @@ local ESP = {
 		['Flag_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
 		['Skeletons'] = false,
 		['Skeleton_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Skeleton_Outline'] = true,
+		['Skeleton_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
 		['Highlights'] = true,
 		['Highlight_Fill'] = { Color = Color3.fromRGB(255, 255, 255) },
 		['Highlight_Fill_Transparency'] = 0.5,
@@ -98,6 +100,8 @@ local ESP = {
 		['Tracer_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
 		['Look'] = false,
 		['Look_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Look_Outline'] = true,
+		['Look_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
 		['Look_Length'] = 3,
 		['Look_Thickness'] = 1,
 	},
@@ -1451,8 +1455,19 @@ function ESP.Skel:Boot()
 	end
 
 	self.Lines = table.create(BoneMax)
+	self.Back = table.create(BoneMax)
+
 	for I = 1, BoneMax do
-		self.Lines[I] = Line()
+		local Back = Line()
+		Back.ZIndex = 1
+		Back.Thickness = 3
+
+		local LineObj = Line()
+		LineObj.ZIndex = 2
+		LineObj.Thickness = 1
+
+		self.Back[I] = Back
+		self.Lines[I] = LineObj
 	end
 end
 
@@ -1461,8 +1476,11 @@ function ESP.Skel:Hide()
 		return
 	end
 
-	for _, Obj in self.Lines do
-		Set(Obj, 'Visible', false)
+	for I = 1, BoneMax do
+		Set(self.Lines[I], 'Visible', false)
+		if self.Back[I] then
+			Set(self.Back[I], 'Visible', false)
+		end
 	end
 end
 
@@ -1476,15 +1494,19 @@ function ESP.Skel:Draw(Esp, On, Data)
 	local Char = Data.Char
 	local Rig = Char:FindFirstChild('UpperTorso') and Bones.R15 or Bones.R6
 	local Col = Esp:Color('Skeleton_Color', Rgb(255, 255, 255))
+	local Outline = Esp:Get('Skeleton_Outline') ~= false
+	local OutlineCol = Esp:Color('Skeleton_Outline_Color', Rgb(0, 0, 0))
 
 	for I = 1, BoneMax do
-		local Line = self.Lines[I]
+		local LineObj = self.Lines[I]
+		local Back = self.Back[I]
 		local Bone = Rig[I]
 		local From = Bone and Joint(Char, Bone[1])
 		local To = Bone and Joint(Char, Bone[2])
 
 		if not From or not To then
-			Set(Line, 'Visible', false)
+			Set(LineObj, 'Visible', false)
+			Set(Back, 'Visible', false)
 			continue
 		end
 
@@ -1492,9 +1514,16 @@ function ESP.Skel:Draw(Esp, On, Data)
 		local Finish, OnB = ESP:Wts(To)
 
 		if OnA and OnB then
-			StrokeLine(Line, Start, Finish, Col, 1)
+			if Outline then
+				StrokeLine(Back, Start, Finish, OutlineCol, 3)
+			else
+				Set(Back, 'Visible', false)
+			end
+
+			StrokeLine(LineObj, Start, Finish, Col, 1)
 		else
-			Set(Line, 'Visible', false)
+			Set(LineObj, 'Visible', false)
+			Set(Back, 'Visible', false)
 		end
 	end
 end
@@ -1502,6 +1531,10 @@ end
 function ESP.Skel:Kill()
 	if self.Lines then
 		KillLines(self.Lines)
+	end
+
+	if self.Back then
+		KillLines(self.Back)
 	end
 end
 
@@ -1628,12 +1661,22 @@ function ESP.Look:Boot()
 		return
 	end
 
+	self.Back = Line()
+	self.Back.ZIndex = 1
+	self.Back.Thickness = 3
+
 	self.Line = Line()
+	self.Line.ZIndex = 2
+	self.Line.Thickness = 1
 end
 
 function ESP.Look:Hide()
 	if self.Line then
 		Set(self.Line, 'Visible', false)
+	end
+
+	if self.Back then
+		Set(self.Back, 'Visible', false)
 	end
 end
 
@@ -1650,12 +1693,28 @@ function ESP.Look:Draw(Esp, On, Data)
 	end
 
 	self:Boot()
-	StrokeLine(self.Line, Start, Finish, Esp:Color('Look_Color', Rgb(255, 255, 255)), Esp:Get('Look_Thickness') or 1)
+
+	local Col = Esp:Color('Look_Color', Rgb(255, 255, 255))
+	local Thick = Esp:Get('Look_Thickness') or 1
+	local Outline = Esp:Get('Look_Outline') ~= false
+	local OutlineCol = Esp:Color('Look_Outline_Color', Rgb(0, 0, 0))
+
+	if Outline then
+		StrokeLine(self.Back, Start, Finish, OutlineCol, Thick + 2)
+	else
+		Set(self.Back, 'Visible', false)
+	end
+
+	StrokeLine(self.Line, Start, Finish, Col, Thick)
 end
 
 function ESP.Look:Kill()
 	if self.Line then
 		self.Line:Remove()
+	end
+
+	if self.Back then
+		self.Back:Remove()
 	end
 end
 
