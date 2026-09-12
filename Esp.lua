@@ -14,13 +14,13 @@ if not Services then
 	getgenv().Services = Services
 end
 
-local Run = Services.RunService
-local Http = Services.HttpService
-local CoreGui = Services.CoreGui
-local Players = Services.Players
-local Workspace = Services.Workspace
-local TweenService = Services.TweenService
-local Input = Services.UserInputService
+local Run = Services['RunService']
+local Http = Services['HttpService']
+local CoreGui = Services['CoreGui']
+local Players = Services['Players']
+local Workspace = Services['Workspace']
+local TweenService = Services['TweenService']
+local Input = Services['UserInputService']
 
 local Hui = CoreGui
 if gethui then
@@ -30,92 +30,116 @@ if gethui then
 	end
 end
 
+local Local = Players.LocalPlayer
+local Cam = Workspace.CurrentCamera
+
+local Rgb = Color3.fromRGB
+local Pos = UDim2.new
+local Off = UDim2.fromOffset
+local Vec = Vector2.new
+local Vec3 = Vector3.new
+local Tween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local Clock = os.clock
+local Floor = math.floor
+local Max = math.max
+local Min = math.min
+local Abs = math.abs
+local Clamp = math.clamp
+local Tan = math.tan
+local Rad = math.rad
+local Huge = math.huge
+
+local HS = Enum.HumanoidStateType
+local Ragdolled = {
+	[HS.Ragdoll] = true,
+	[HS.Physics] = true,
+	[HS.GettingUp] = true,
+	[HS.FallingDown] = true,
+}
+
 local ESP = {
 	Objects = {},
 	Conns = {},
+	F = {},
 	Font = Font.fromEnum(Enum.Font.SpecialElite),
 	Size = 12,
 	Height = 6,
 	Width = 4,
 
 	Flags = {
-		['Enabled'] = true,
-		['Names'] = true,
+		['Enabled'] = false,
+		['Team_Check'] = false,
+		['Max_Distance'] = 0,
+		['Names'] = false,
 		['Name_Type'] = 'Both',
-		['Name_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['Boxes'] = true,
+		['Name_Color'] = Rgb(255, 255, 255),
+		['Boxes'] = false,
 		['Box_Type'] = '2D',
 		['Box_Dynamic'] = false,
-		['Box_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['Fill'] = true,
-		['Fill_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Box_Color'] = Rgb(255, 255, 255),
+		['Fill'] = false,
+		['Fill_Color'] = Rgb(255, 255, 255),
 		['Fill_Type'] = 'Full',
 		['Fill_Half'] = 'Top',
 		['Fill_Static'] = false,
-		['Fill_Rotation'] = nil,
+		['Fill_Rotation'] = false,
 		['Fill_Transparency'] = 0.5,
-		['Fill_Spin'] = true,
+		['Fill_Spin'] = false,
 		['Fill_Spin_Speed'] = 60,
-		['Head'] = true,
-		['Head_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['Head_Fill'] = true,
-		['Head_Fill_Color'] = { Color = Color3.fromRGB(255, 0, 75) },
+		['Head'] = false,
+		['Head_Color'] = Rgb(255, 255, 255),
+		['Head_Fill'] = false,
+		['Head_Fill_Color'] = Rgb(255, 0, 75),
 		['Head_Fill_Type'] = 'Full',
 		['Head_Fill_Static'] = false,
 		['Head_Fill_Transparency'] = 0.5,
-		['Head_Spin'] = true,
+		['Head_Spin'] = false,
 		['Head_Spin_Speed'] = 60,
-		['Healthbar'] = true,
-		['Health_Text'] = true,
-		['Health_Text_Dynamic'] = true,
-		['Health_Text_Color'] = { Color = Color3.fromRGB(0, 255, 80) },
-		['Health_High'] = { Color = Color3.fromRGB(0, 255, 80) },
-		['Health_Mid'] = { Color = Color3.fromRGB(255, 230, 0) },
-		['Health_Low'] = { Color = Color3.fromRGB(255, 40, 40) },
-		['Armorbar'] = true,
-		['Armor_Text'] = true,
-		['Armor_Color'] = { Color = Color3.fromRGB(0, 85, 255) },
-		['Distance'] = true,
-		['Distance_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['Weapon'] = true,
-		['Weapon_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
-		['EspFlags'] = true,
-		['Flag_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Healthbar'] = false,
+		['Health_Text'] = false,
+		['Health_Text_Dynamic'] = false,
+		['Health_Text_Color'] = Rgb(0, 255, 80),
+		['Health_High'] = Rgb(0, 255, 80),
+		['Health_Mid'] = Rgb(255, 230, 0),
+		['Health_Low'] = Rgb(255, 40, 40),
+		['Armorbar'] = false,
+		['Armor_Text'] = false,
+		['Armor_Color'] = Rgb(0, 85, 255),
+		['Distance'] = false,
+		['Distance_Color'] = Rgb(255, 255, 255),
+		['Weapon'] = false,
+		['Weapon_Color'] = Rgb(255, 255, 255),
+		['EspFlags'] = false,
+		['Flag_Color'] = Rgb(255, 255, 255),
 		['Skeletons'] = false,
-		['Skeleton_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Skeleton_Color'] = Rgb(255, 255, 255),
 		['Skeleton_Outline'] = true,
-		['Skeleton_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
-		['Highlights'] = true,
-		['Highlight_Fill'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Skeleton_Outline_Color'] = Rgb(0, 0, 0),
+		['Highlights'] = false,
+		['Highlight_Fill'] = Rgb(255, 255, 255),
 		['Highlight_Fill_Transparency'] = 0.5,
 		['Highlight_Outline'] = true,
-		['Highlight_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
+		['Highlight_Outline_Color'] = Rgb(0, 0, 0),
 		['Highlight_Outline_Transparency'] = 0,
 		['Highlight_Depth'] = 'AlwaysOnTop',
 		['Tracers'] = false,
-		['Tracer_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Tracer_Color'] = Rgb(255, 255, 255),
 		['Tracer_Origin'] = 'Bottom',
 		['Tracer_Thickness'] = 1,
 		['Tracer_Outline'] = true,
-		['Tracer_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
+		['Tracer_Outline_Color'] = Rgb(0, 0, 0),
 		['Look'] = false,
-		['Look_Color'] = { Color = Color3.fromRGB(255, 255, 255) },
+		['Look_Color'] = Rgb(255, 255, 255),
 		['Look_Outline'] = true,
-		['Look_Outline_Color'] = { Color = Color3.fromRGB(0, 0, 0) },
+		['Look_Outline_Color'] = Rgb(0, 0, 0),
 		['Look_Length'] = 3,
 		['Look_Thickness'] = 1,
 	},
 }
 
-local Local = Players.LocalPlayer
-local Cam = Workspace.CurrentCamera
-local Rgb = Color3.fromRGB
-local Pos = UDim2.new
-local Vec = Vector2.new
-local Tween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
 local function SampleGrad(Colors, Stops, T)
-	T = math.clamp(T, 0, 1)
+	T = Clamp(T, 0, 1)
 	local Last = #Colors
 	if Last == 0 then
 		return Rgb(255, 255, 255)
@@ -185,44 +209,43 @@ local Bones = {
 }
 
 local Joints = {
-	Neck = { 'Torso', Vector3.new(0, 1, 0) },
-	Pelvis = { 'Torso', Vector3.new(0, -1, 0) },
-	RightArm = { 'Right Arm', Vector3.new(0, 1, 0) },
-	LeftArm = { 'Left Arm', Vector3.new(0, 1, 0) },
-	RightLeg = { 'Torso', Vector3.new(0.5, -1, 0) },
-	LeftLeg = { 'Torso', Vector3.new(-0.5, -1, 0) },
-	RightHand = { 'Right Arm', Vector3.new(0, -1, 0) },
-	LeftHand = { 'Left Arm', Vector3.new(0, -1, 0) },
-	RightFoot = { 'Right Leg', Vector3.new(0, -1, 0) },
-	LeftFoot = { 'Left Leg', Vector3.new(0, -1, 0) },
+	Neck = { 'Torso', Vec3(0, 1, 0) },
+	Pelvis = { 'Torso', Vec3(0, -1, 0) },
+	RightArm = { 'Right Arm', Vec3(0, 1, 0) },
+	LeftArm = { 'Left Arm', Vec3(0, 1, 0) },
+	RightLeg = { 'Torso', Vec3(0.5, -1, 0) },
+	LeftLeg = { 'Torso', Vec3(-0.5, -1, 0) },
+	RightHand = { 'Right Arm', Vec3(0, -1, 0) },
+	LeftHand = { 'Left Arm', Vec3(0, -1, 0) },
+	RightFoot = { 'Right Leg', Vec3(0, -1, 0) },
+	LeftFoot = { 'Left Leg', Vec3(0, -1, 0) },
 }
 
 Bones.R6 = {
-	{ 'Head', Joints.Neck },
-	{ Joints.Neck, Joints.Pelvis },
-	{ Joints.Neck, Joints.RightArm },
-	{ Joints.RightArm, Joints.RightHand },
-	{ Joints.Neck, Joints.LeftArm },
-	{ Joints.LeftArm, Joints.LeftHand },
-	{ Joints.Pelvis, Joints.RightLeg },
-	{ Joints.RightLeg, Joints.RightFoot },
-	{ Joints.Pelvis, Joints.LeftLeg },
-	{ Joints.LeftLeg, Joints.LeftFoot },
+	{ 'Head', Joints['Neck'] },
+	{ Joints['Neck'], Joints['Pelvis'] },
+	{ Joints['Neck'], Joints['RightArm'] },
+	{ Joints['RightArm'], Joints['RightHand'] },
+	{ Joints['Neck'], Joints['LeftArm'] },
+	{ Joints['LeftArm'], Joints['LeftHand'] },
+	{ Joints['Pelvis'], Joints['RightLeg'] },
+	{ Joints['RightLeg'], Joints['RightFoot'] },
+	{ Joints['Pelvis'], Joints['LeftLeg'] },
+	{ Joints['LeftLeg'], Joints['LeftFoot'] },
 }
 
-local BoneMax = math.max(#Bones.R15, #Bones.R6)
+local BoneMax = Max(#Bones['R15'], #Bones['R6'])
 
-
-local function Joint(Char, Node)
-	if type(Node) == 'string' then
-		local Part = Char:FindFirstChild(Node)
-		return Part and Part.Position
-	end
-
-	local Part = Char:FindFirstChild(Node[1])
-	return Part and Part.CFrame * Node[2]
+local function JointName(Node)
+	return type(Node) == 'string' and Node or Node[1]
 end
 
+local function JointPos(Part, Node)
+	if type(Node) == 'string' then
+		return Part.Position
+	end
+	return Part.CFrame * Node[2]
+end
 
 local function RegFont(Name, Id, Url)
 	if not isfile(Id) then
@@ -257,7 +280,7 @@ local Ok, Tempesta = pcall(RegFont,
 )
 
 if Ok then
-	ESP.Font = Tempesta
+	ESP['Font'] = Tempesta
 end
 
 local function Inst(Class, Props)
@@ -289,61 +312,121 @@ local function Set(Obj, Key, Val)
 	end
 end
 
-local function Paint(Frame, Grad, On, Cfg)
+local function Paint(Frame, Grad, On, Cfg, State)
 	if not On then
-		Set(Frame, 'BackgroundTransparency', 1)
+		if State['Vis'] ~= false then
+			State['Vis'] = false
+			Frame.BackgroundTransparency = 1
+		end
+		if State['Grad'] ~= false then
+			State['Grad'] = false
+			Grad.Enabled = false
+		end
 		return
 	end
 
-	local Col = Cfg.Col
-	Set(Frame, 'BackgroundColor3', Col)
-	Set(Frame, 'BackgroundTransparency', Cfg.Trans or 0.5)
+	local Col = Cfg['Col']
+	if State['Vis'] ~= true or State['Col'] ~= Col or State['Trans'] ~= Cfg['Trans'] then
+		State['Vis'] = true
+		State['Col'] = Col
+		State['Trans'] = Cfg['Trans']
+		Frame.BackgroundColor3 = Col
+		Frame.BackgroundTransparency = Cfg['Trans']
+	end
 
-	if Cfg.Static then
-		Set(Grad, 'Enabled', false)
+	if Cfg['Static'] then
+		if State['Grad'] ~= false then
+			State['Grad'] = false
+			Grad.Enabled = false
+		end
 		return
 	end
 
-	Set(Grad, 'Enabled', true)
+	if State['Grad'] ~= true then
+		State['Grad'] = true
+		Grad.Enabled = true
+	end
 
-	if Cfg.Last ~= Col then
-		Cfg.Last = Col
+	if State['Last'] ~= Col then
+		State['Last'] = Col
 		Grad.Color = ColorSequence.new(Col)
 	end
 
-	if Cfg.Type == 'Half' then
-		Set(Grad, 'Transparency', FillTrans.Half)
-	else
-		Set(Grad, 'Transparency', FillTrans.Full)
+	local Seq = Cfg['Type'] == 'Half' and FillTrans['Half'] or FillTrans['Full']
+	if State['Seq'] ~= Seq then
+		State['Seq'] = Seq
+		Grad.Transparency = Seq
 	end
 
-	if Cfg.Spin then
-		Set(Grad, 'Rotation', (os.clock() * (Cfg.Speed or 60)) % 360)
-	else
-		Set(Grad, 'Rotation', Cfg.Rot or FillRot.Bottom)
+	local Rot = Cfg['Rot']
+	if State['Rot'] ~= Rot then
+		State['Rot'] = Rot
+		Grad.Rotation = Rot
 	end
 end
 
-local function Line()
+local function Line(Thick, Z)
 	local Obj = Drawing.new('Line')
-	Obj.Thickness = 1
+	Obj.Thickness = Thick or 1
 	Obj.Transparency = 0
+	Obj.ZIndex = Z or 1
 	Obj.Visible = false
-	return Obj
+
+	return {
+		Obj = Obj,
+		Vis = false,
+		Thick = Thick or 1,
+		X1 = -1,
+		Y1 = -1,
+		X2 = -1,
+		Y2 = -1,
+		Col = nil,
+	}
 end
 
 local function KillLines(List)
-	for _, Obj in List do
-		Obj:Remove()
+	for _, Item in List do
+		Item['Obj']:Remove()
+	end
+	table.clear(List)
+end
+
+local function HideLine(Item)
+	if Item and Item['Vis'] then
+		Item['Vis'] = false
+		Item['Obj'].Visible = false
 	end
 end
 
-local function StrokeLine(Obj, From, To, Col, Thick)
-	Set(Obj, 'From', From)
-	Set(Obj, 'To', To)
-	Set(Obj, 'Color', Col)
-	Set(Obj, 'Thickness', Thick or 1)
-	Set(Obj, 'Visible', true)
+local function StrokeLine(Item, X1, Y1, X2, Y2, Col, Thick)
+	local Obj = Item['Obj']
+
+	if Item['X1'] ~= X1 or Item['Y1'] ~= Y1 then
+		Item['X1'] = X1
+		Item['Y1'] = Y1
+		Obj.From = Vec(X1, Y1)
+	end
+
+	if Item['X2'] ~= X2 or Item['Y2'] ~= Y2 then
+		Item['X2'] = X2
+		Item['Y2'] = Y2
+		Obj.To = Vec(X2, Y2)
+	end
+
+	if Item['Col'] ~= Col then
+		Item['Col'] = Col
+		Obj.Color = Col
+	end
+
+	if Item['Thick'] ~= Thick then
+		Item['Thick'] = Thick
+		Obj.Thickness = Thick
+	end
+
+	if not Item['Vis'] then
+		Item['Vis'] = true
+		Obj.Visible = true
+	end
 end
 
 local function Stroke(Parent)
@@ -366,69 +449,61 @@ local function Border(Parent)
 end
 
 function ESP:Get(Key)
-	local Bag = self.Bag
-	if Bag then
-		local Hit = Bag[Key]
-		if Hit ~= nil then
-			return Hit
+	local F = self['F']
+	local Val = F[Key]
+	if Val ~= nil then
+		return Val
+	end
+
+	Val = (self['ExtFlags'] or self['Flags'])[Key]
+	if type(Val) == 'table' then
+		if Val['Get'] then
+			Val = Val:Get()
 		end
-	end
-
-	local Src = self.ExtFlags or self.Flags
-	local Val = Src[Key]
-
-	if type(Val) == 'table' and Val.Get then
-		Val = Val:Get()
-	end
-
-	if Bag and Val ~= nil then
-		Bag[Key] = Val
+		if type(Val) == 'table' then
+			Val = Val['Color'] or Val[1]
+		end
 	end
 
 	return Val
 end
 
 function ESP:Color(Key, Fallback)
-	local Bag = self.Bag
-	local Id = Key .. '!'
-	if Bag then
-		local Hit = Bag[Id]
-		if Hit then
-			return Hit
-		end
-	end
-
 	local Val = self:Get(Key)
-	if type(Val) == 'table' then
-		Val = Val.Color or Val[1] or Fallback
-	else
-		Val = Val or Fallback
-	end
+	return Val ~= nil and Val or Fallback
+end
 
-	if Bag then
-		Bag[Id] = Val
+function ESP:Raw(Key)
+	local Src = self['ExtFlags'] or self['Flags']
+	local Val = Src[Key]
+	if type(Val) == 'table' and Val['Get'] then
+		Val = Val:Get()
 	end
-
 	return Val
 end
 
 function ESP:NameStr(Data)
-	local Mode = self:Get('Name_Type') or 'Both'
+	local Mode = self['F']['Name_Type'] or 'Both'
 
 	if Mode == 'Display' then
-		return Data.Display
+		return Data['Display']
 	end
 
 	if Mode == 'Username' then
-		return Data.Name
+		return Data['Name']
 	end
 
-	return Data.Display .. ' (@' .. Data.Name .. ')'
+	return Data['Both']
 end
 
 function ESP:Wts(World)
 	local V, On = Cam:WorldToViewportPoint(World)
 	return Vec(V.X, V.Y), On, V.Z
+end
+
+function ESP:Project(World)
+	local V, On = Cam:WorldToViewportPoint(World)
+	return V.X, V.Y, On, V.Z
 end
 
 local BodyPart = {
@@ -458,31 +533,30 @@ local BodyPart = {
 	['RightFoot'] = true,
 }
 
-local BoxVerts = {
-	Vector3.new(-1, -1, -1),
-	Vector3.new(-1, 1, -1),
-	Vector3.new(-1, 1, 1),
-	Vector3.new(-1, -1, 1),
-	Vector3.new(1, -1, -1),
-	Vector3.new(1, 1, -1),
-	Vector3.new(1, 1, 1),
-	Vector3.new(1, -1, 1),
-}
+local BoxDrop = Vec3(0, 0.25, 0)
 
-ESP.PartBag = setmetatable({}, { __mode = 'k' })
+local BoxVerts = {
+	Vec3(-1, -1, -1),
+	Vec3(-1, 1, -1),
+	Vec3(-1, 1, 1),
+	Vec3(-1, -1, 1),
+	Vec3(1, -1, -1),
+	Vec3(1, 1, -1),
+	Vec3(1, 1, 1),
+	Vec3(1, -1, 1),
+}
 
 function ESP:IsRagdolled(Hum, Char)
 	if not Hum then
 		return false
 	end
 
-	if Hum.Sit or Hum.SeatPart then
+	local State = Hum:GetState()
+	if not Ragdolled[State] then
 		return false
 	end
 
-	local State = Hum:GetState()
-	local HS = Enum.HumanoidStateType
-	if State == HS.Seated then
+	if Hum.Sit or Hum.SeatPart then
 		return false
 	end
 
@@ -503,82 +577,62 @@ function ESP:IsRagdolled(Hum, Char)
 		end
 	end
 
-	return State == HS.Ragdoll or State == HS.Physics or State == HS.GettingUp or State == HS.FallingDown
+	return true
 end
 
-function ESP:BodyParts(Char)
-	local Children = Char:GetChildren()
-	local Count = #Children
-	local Hit = self.PartBag[Char]
-	if Hit and Hit.N == Count then
-		return Hit.Parts
-	end
+function ESP:StableBounds(X, Y, Depth)
+	local Px = self['Px']
+	local H = Max(Floor((self['Height'] / Depth) * Px + 0.5), 4)
+	local W = Max(Floor(H * (self['Width'] / self['Height']) + 0.5), 4)
 
-	local Parts = {}
-	for I = 1, Count do
-		local Part = Children[I]
-		if Part:IsA('BasePart') and BodyPart[Part.Name] then
-			Parts[#Parts + 1] = Part
-		end
-	end
-
-	self.PartBag[Char] = { N = Count, Parts = Parts }
-	return Parts
+	return Floor(X - W * 0.5 + 0.5), Floor(Y - H * 0.5 + 0.5), W, H
 end
 
-function ESP:StableBounds(Root)
-	local Center = Root.Position - Vector3.new(0, 0.25, 0)
-	local Screen, On, Depth = self:Wts(Center)
-	if not On or not Depth or Depth <= 0.15 then
-		return
-	end
-
-	local Px = self.Px
-	if not Px then
-		Px = Cam.ViewportSize.Y / (2 * math.tan(math.rad(Cam.FieldOfView) * 0.5))
-	end
-
-	local H = math.max(math.floor((self.Height / Depth) * Px + 0.5), 4)
-	local W = math.max(math.floor(H * (self.Width / self.Height) + 0.5), 4)
-
-	return Vec(math.floor(Screen.X - W * 0.5 + 0.5), math.floor(Screen.Y - H * 0.5 + 0.5)), Vec(W, H)
-end
-
-function ESP:DynamicBounds(Char)
-	local Parts = self:BodyParts(Char)
+function ESP:DynamicBounds(Obj, Char)
+	local Parts = Obj:Limbs(Char)
 	if not Parts[1] then
 		return
 	end
 
-	local Min3, Max3
+	local MinX3, MinY3, MinZ3 = Huge, Huge, Huge
+	local MaxX3, MaxY3, MaxZ3 = -Huge, -Huge, -Huge
+
 	for I = 1, #Parts do
 		local Part = Parts[I]
 		local CF, Size = Part.CFrame, Part.Size
 		local A = (CF - Size * 0.5).Position
 		local B = (CF + Size * 0.5).Position
-		if Min3 then
-			Min3 = Vector3.new(math.min(Min3.X, A.X, B.X), math.min(Min3.Y, A.Y, B.Y), math.min(Min3.Z, A.Z, B.Z))
-			Max3 = Vector3.new(math.max(Max3.X, A.X, B.X), math.max(Max3.Y, A.Y, B.Y), math.max(Max3.Z, A.Z, B.Z))
-		else
-			Min3 = Vector3.new(math.min(A.X, B.X), math.min(A.Y, B.Y), math.min(A.Z, B.Z))
-			Max3 = Vector3.new(math.max(A.X, B.X), math.max(A.Y, B.Y), math.max(A.Z, B.Z))
-		end
+
+		if A.X < MinX3 then MinX3 = A.X end
+		if B.X < MinX3 then MinX3 = B.X end
+		if A.Y < MinY3 then MinY3 = A.Y end
+		if B.Y < MinY3 then MinY3 = B.Y end
+		if A.Z < MinZ3 then MinZ3 = A.Z end
+		if B.Z < MinZ3 then MinZ3 = B.Z end
+
+		if A.X > MaxX3 then MaxX3 = A.X end
+		if B.X > MaxX3 then MaxX3 = B.X end
+		if A.Y > MaxY3 then MaxY3 = A.Y end
+		if B.Y > MaxY3 then MaxY3 = B.Y end
+		if A.Z > MaxZ3 then MaxZ3 = A.Z end
+		if B.Z > MaxZ3 then MaxZ3 = B.Z end
 	end
 
-	local Center = (Min3 + Max3) * 0.5
-	local Half = (Max3 - Min3) * 0.5
-	local MinX, MinY = math.huge, math.huge
-	local MaxX, MaxY = -math.huge, -math.huge
+	local Center = Vec3((MinX3 + MaxX3) * 0.5, (MinY3 + MaxY3) * 0.5, (MinZ3 + MaxZ3) * 0.5)
+	local Half = Vec3((MaxX3 - MinX3) * 0.5, (MaxY3 - MinY3) * 0.5, (MaxZ3 - MinZ3) * 0.5)
+
+	local MinX, MinY = Huge, Huge
+	local MaxX, MaxY = -Huge, -Huge
 	local Hits = 0
 
 	for I = 1, 8 do
-		local Scr, _, Dep = self:Wts(Center + Half * BoxVerts[I])
-		if Dep and Dep > 0.15 then
+		local Sx, Sy, _, Dep = self:Project(Center + Half * BoxVerts[I])
+		if Dep > 0.15 then
 			Hits += 1
-			MinX = math.min(MinX, Scr.X)
-			MinY = math.min(MinY, Scr.Y)
-			MaxX = math.max(MaxX, Scr.X)
-			MaxY = math.max(MaxY, Scr.Y)
+			if Sx < MinX then MinX = Sx end
+			if Sy < MinY then MinY = Sy end
+			if Sx > MaxX then MaxX = Sx end
+			if Sy > MaxY then MaxY = Sy end
 		end
 	end
 
@@ -586,117 +640,14 @@ function ESP:DynamicBounds(Char)
 		return
 	end
 
-	local Vp = self.Vp or Cam.ViewportSize
-	local W = math.max(math.floor(MaxX - MinX + 0.5), 4)
-	local H = math.max(math.floor(MaxY - MinY + 0.5), 4)
+	local Vp = self['Vp']
+	local W = Max(Floor(MaxX - MinX + 0.5), 4)
+	local H = Max(Floor(MaxY - MinY + 0.5), 4)
 	if W > Vp.X or H > Vp.Y then
 		return
 	end
 
-	return Vec(math.floor(MinX + 0.5), math.floor(MinY + 0.5)), Vec(W, H)
-end
-
-function ESP:Bounds(Char, Root, Ragdoll)
-	if Ragdoll == nil then
-		local Hum = Char:FindFirstChildOfClass('Humanoid')
-		Ragdoll = self:IsRagdolled(Hum, Char)
-	end
-
-	if self:Get('Box_Dynamic') or Ragdoll then
-		local Pos, Size = self:DynamicBounds(Char)
-		if Pos then
-			return Pos, Size
-		end
-	end
-
-	return self:StableBounds(Root)
-end
-
-function ESP:Tool(Char)
-	for _, Child in Char:GetChildren() do
-		if Child:IsA('Tool') then
-			local Name = Child.Name
-
-			if Name:sub(1, 1) == '[' and Name:sub(-1) == ']' then
-				return Name
-			end
-
-			return '[' .. Name .. ']'
-		end
-	end
-
-	return ''
-end
-
-function ESP:Data(Plr)
-	if Plr == Local then
-		return
-	end
-
-	local Char = Plr.Character
-	local Hum = Char and Char:FindFirstChildOfClass('Humanoid')
-	local Root = Char and Char:FindFirstChild('HumanoidRootPart')
-
-	if not Char or not Hum or Hum.Health <= 0 then
-		return
-	end
-
-	if not Root then
-		Root = Char:FindFirstChild('UpperTorso')
-			or Char:FindFirstChild('Torso')
-			or Char:FindFirstChild('LowerTorso')
-			or Char:FindFirstChild('Head')
-	end
-
-	if not Root then
-		return
-	end
-
-	local State = Hum:GetState()
-	local HS = Enum.HumanoidStateType
-	local Ragdoll = self:IsRagdolled(Hum, Char)
-	local BoxPos, BoxSize = self:Bounds(Char, Root, Ragdoll)
-	if not BoxPos then
-		return
-	end
-
-	local Dist = math.floor((Root.Position - Cam.CFrame.Position).Magnitude + 0.5)
-	local HPct = Hum.MaxHealth > 0 and Hum.Health / Hum.MaxHealth or 0
-	local Armor = Hum:GetAttribute('Armor') or Char:GetAttribute('Armor') or 0
-	local MaxArmor = Hum:GetAttribute('MaxArmor') or Char:GetAttribute('MaxArmor') or 100
-	local APct = MaxArmor > 0 and math.clamp(Armor / MaxArmor, 0, 1) or 0
-	local Tool = self:Get('Weapon') and self:Tool(Char) or ''
-	local Air = State == HS.Freefall or State == HS.FallingDown or State == HS.Jumping
-	local Climbing = State == HS.Climbing
-	local Swimming = State == HS.Swimming
-	local Seated = State == HS.Seated or Hum.Sit or Hum.SeatPart ~= nil
-	local Flying = State == HS.Flying
-	local Moving = Hum.MoveDirection.Magnitude > 0.05
-
-	return {
-		Pos = BoxPos,
-		Size = BoxSize,
-		Char = Char,
-		Head = Char:FindFirstChild('Head'),
-		Name = Plr.Name,
-		Display = Plr.DisplayName,
-		Dist = Dist,
-		Health = HPct,
-		HealthVal = math.floor(Hum.Health + 0.5),
-		Armor = APct,
-		ArmorVal = math.floor(Armor + 0.5),
-		Weapon = Tool,
-		Flags = {
-			Ragdoll = Ragdoll,
-			Falling = State == HS.Freefall or State == HS.FallingDown,
-			Jumping = State == HS.Jumping,
-			Climbing = Climbing,
-			Swimming = Swimming,
-			Seated = Seated,
-			Flying = Flying,
-			Running = Moving and not (Air or Climbing or Swimming or Seated or Ragdoll or Flying),
-		},
-	}
+	return Floor(MinX + 0.5), Floor(MinY + 0.5), W, H
 end
 
 function ESP:Build()
@@ -788,7 +739,7 @@ function ESP:Build()
 		BackgroundTransparency = 1,
 		Position = Pos(0.5, 0, 0, 0),
 		Size = Pos(0, 0, 0, 12),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(0, 255, 80),
 		TextSize = 12,
@@ -825,7 +776,7 @@ function ESP:Build()
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Size = Pos(1, 0, 1, 0),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
 		TextSize = 12,
@@ -866,7 +817,7 @@ function ESP:Build()
 		BackgroundTransparency = 1,
 		LayoutOrder = 1,
 		Size = Pos(1, 0, 0, 10),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
 		TextSize = 12,
@@ -886,7 +837,7 @@ function ESP:Build()
 		LayoutOrder = 2,
 		Position = Pos(0, 0, 0, -1),
 		Size = Pos(1, 0, 0, 10),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
 		TextSize = 12,
@@ -944,7 +895,7 @@ function ESP:Build()
 		BackgroundTransparency = 1,
 		Position = Pos(1, 0, 0, 1),
 		Size = Pos(0, 0, 0, 12),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(0, 85, 255),
 		TextSize = 12,
@@ -1020,7 +971,7 @@ function ESP:Build()
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 1,
 		Size = Pos(1, 0, 0, 0),
-		FontFace = ESP.Font,
+		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
 		TextSize = 12,
@@ -1033,7 +984,7 @@ function ESP:Build()
 		Parent = Holder,
 		Rotation = -90,
 		Color = ColorSequence.new(Rgb(212, 213, 255)),
-		Transparency = FillTrans.Full,
+		Transparency = FillTrans['Full'],
 	})
 
 	local Corners = Inst('Frame', {
@@ -1057,8 +1008,9 @@ function ESP:Build()
 		{ Pos(1, 1, 1, 1), Pos(0, 1, 0.3, 0), Vec(1, 1), -180 },
 	}
 
+	local Edges = {}
 	for I, Data in Layout do
-		local Line = Inst('Frame', {
+		local Edge = Inst('Frame', {
 			Name = 'Corner' .. I,
 			Parent = Corners,
 			BorderSizePixel = 0,
@@ -1068,13 +1020,15 @@ function ESP:Build()
 			AnchorPoint = Data[3],
 			Rotation = Data[4],
 		})
-		Stroke(Line)
+		Stroke(Edge)
+		Edges[I] = Edge
 	end
 
 	return Holder, {
 		Inline = Inline,
 		Outline = Outline,
 		Corners = Corners,
+		Edges = Edges,
 		Holder = Holder,
 		HolderGrad = HolderGrad,
 		NameText = NameText,
@@ -1098,13 +1052,15 @@ function Base:New()
 	return setmetatable({ Items = {} }, self)
 end
 
+function Base:Hide() end
+
 function Base:Kill()
-	for _, Item in self.Items do
+	for _, Item in self['Items'] do
 		if typeof(Item) == 'Instance' then
 			Item:Destroy()
 		end
 	end
-	table.clear(self.Items)
+	table.clear(self['Items'])
 end
 
 ESP.Box = setmetatable({}, { __index = Base })
@@ -1112,30 +1068,34 @@ ESP.Box.__index = ESP.Box
 
 function ESP.Box:New(Refs)
 	local Self = Base.New(self)
-	Self.Inline = Refs.Inline
-	Self.Outline = Refs.Outline
-	Self.Corners = Refs.Corners
-	Self.Lines = Refs.Corners:GetChildren()
+	Self['Inline'] = Refs['Inline']
+	Self['Outline'] = Refs['Outline']
+	Self['Corners'] = Refs['Corners']
+	Self['Edges'] = Refs['Edges']
 	return Self
 end
 
 function ESP.Box:Draw(Esp, On)
-	local Col = Esp:Color('Box_Color', Rgb(255, 255, 255))
-	local Is2D = (Esp:Get('Box_Type') or '2D') == '2D'
+	local F = Esp['F']
+	local Is2D = On and (F['Box_Type'] or '2D') == '2D'
 
-	Set(self.Inline, 'Enabled', On and Is2D)
-	Set(self.Outline, 'Enabled', On and Is2D)
-	Set(self.Corners, 'Visible', On and not Is2D)
+	Set(self['Inline'], 'Enabled', Is2D)
+	Set(self['Outline'], 'Enabled', Is2D)
+	Set(self['Corners'], 'Visible', On and not Is2D)
 
 	if not On then
 		return
 	end
 
-	Set(self.Inline, 'Color', Col)
-	for _, Line in self.Lines do
-		if Line:IsA('Frame') then
-			Set(Line, 'BackgroundColor3', Col)
-		end
+	local Col = F['Box_Color']
+	if self['Col'] == Col then
+		return
+	end
+
+	self['Col'] = Col
+	self['Inline'].Color = Col
+	for _, Edge in self['Edges'] do
+		Edge.BackgroundColor3 = Col
 	end
 end
 
@@ -1144,27 +1104,14 @@ ESP.Fill.__index = ESP.Fill
 
 function ESP.Fill:New(Refs)
 	local Self = Base.New(self)
-	Self.Frame = Refs.Holder
-	Self.Grad = Refs.HolderGrad
-	Self.Cfg = { Last = nil }
+	Self['Frame'] = Refs['Holder']
+	Self['Grad'] = Refs['HolderGrad']
+	Self['State'] = {}
 	return Self
 end
 
 function ESP.Fill:Draw(Esp, On)
-	local Type = Esp:Get('Fill_Type') or 'Full'
-	local Rot = Esp:Get('Fill_Rotation')
-	if not Rot and Type ~= 'Full' then
-		Rot = FillRot[Esp:Get('Fill_Half') or 'Top'] or FillRot.Top
-	end
-
-	self.Cfg.Col = Esp:Color('Fill_Color', Rgb(255, 255, 255))
-	self.Cfg.Trans = Esp:Get('Fill_Transparency') or 0.5
-	self.Cfg.Static = Esp:Get('Fill_Static')
-	self.Cfg.Type = Type
-	self.Cfg.Rot = Rot or FillRot.Bottom
-	self.Cfg.Spin = Esp:Get('Fill_Spin')
-	self.Cfg.Speed = Esp:Get('Fill_Spin_Speed') or 60
-	Paint(self.Frame, self.Grad, On, self.Cfg)
+	Paint(self['Frame'], self['Grad'], On, Esp['FCfg'], self['State'])
 end
 
 ESP.Circ = setmetatable({}, { __index = Base })
@@ -1187,13 +1134,13 @@ function ESP.Circ:New(Gui)
 		CornerRadius = UDim.new(1, 0),
 	})
 
-	Self.Stroke = Inst('UIStroke', {
+	Self['Stroke'] = Inst('UIStroke', {
 		Parent = Root,
 		Color = Rgb(255, 255, 255),
 		Thickness = 1.1,
 	})
 
-	Self.Inner = Inst('Frame', {
+	Self['Inner'] = Inst('Frame', {
 		Parent = Root,
 		BackgroundColor3 = Rgb(255, 255, 255),
 		BorderSizePixel = 0,
@@ -1201,96 +1148,104 @@ function ESP.Circ:New(Gui)
 	})
 
 	Inst('UICorner', {
-		Parent = Self.Inner,
+		Parent = Self['Inner'],
 		CornerRadius = UDim.new(1, 0),
 	})
 
-	Self.Grad = Inst('UIGradient', {
-		Parent = Self.Inner,
+	Self['Grad'] = Inst('UIGradient', {
+		Parent = Self['Inner'],
 		Rotation = -90,
 		Color = ColorSequence.new(Rgb(255, 0, 75)),
-		Transparency = FillTrans.Full,
+		Transparency = FillTrans['Full'],
 	})
 
-	Self.Root = Root
-	Self.Cfg = { Last = nil }
-	table.insert(Self.Items, Root)
+	Self['Root'] = Root
+	Self['State'] = {}
+	Self['Vis'] = false
+	table.insert(Self['Items'], Root)
 	return Self
 end
 
 function ESP.Circ:Hide()
-	Set(self.Root, 'Visible', false)
+	if self['Vis'] then
+		self['Vis'] = false
+		self['Root'].Visible = false
+	end
 end
 
-function ESP.Circ:Draw(On, Scr, Rad, Cfg)
-	if not On or not Scr or not Rad then
-		return self:Hide()
+function ESP.Circ:Draw(X, Y, Rad, Cfg)
+	local Dia = Max(Floor(Rad * 2 + 0.5), 2)
+	local Root = self['Root']
+
+	if not self['Vis'] then
+		self['Vis'] = true
+		Root.Visible = true
 	end
 
-	local Dia = math.max(math.floor(Rad * 2 + 0.5), 2)
-	Set(self.Root, 'Visible', true)
-	Set(self.Root, 'Position', UDim2.fromOffset(Scr.X, Scr.Y))
-	Set(self.Root, 'Size', UDim2.fromOffset(Dia, Dia))
+	if self['X'] ~= X or self['Y'] ~= Y then
+		self['X'] = X
+		self['Y'] = Y
+		Root.Position = Off(X, Y)
+	end
 
-	if Cfg.Stroke then
-		Set(self.Stroke, 'Enabled', true)
-		Set(self.Stroke, 'Color', Cfg.Stroke)
+	if self['Dia'] ~= Dia then
+		self['Dia'] = Dia
+		Root.Size = Off(Dia, Dia)
+	end
+
+	local Line = Cfg['Stroke']
+	if Line then
+		Set(self['Stroke'], 'Enabled', true)
+		if self['Line'] ~= Line then
+			self['Line'] = Line
+			self['Stroke'].Color = Line
+		end
 	else
-		Set(self.Stroke, 'Enabled', false)
+		Set(self['Stroke'], 'Enabled', false)
 	end
 
-	Paint(self.Inner, self.Grad, Cfg.Fill, Cfg)
+	Paint(self['Inner'], self['Grad'], Cfg['Fill'], Cfg, self['State'])
 end
 
 ESP.Head = setmetatable({}, { __index = Base })
 ESP.Head.__index = ESP.Head
 
-function ESP.Head:New(Gui)
-	local Self = Base.New(self)
-	Self.Gui = Gui
-	return Self
+function ESP.Head:New()
+	return Base.New(self)
 end
 
 function ESP.Head:Hide()
-	if self.Circ then
-		self.Circ:Hide()
+	if self['Circ'] then
+		self['Circ']:Hide()
 	end
 end
 
 function ESP.Head:Kill()
-	if self.Circ then
-		self.Circ:Kill()
+	if self['Circ'] then
+		self['Circ']:Kill()
+		self['Circ'] = nil
 	end
 end
 
 function ESP.Head:Draw(Esp, On, Data)
-	local Part = Data.Head
+	local Part = Data['Head']
 	if not On or not Part then
 		return self:Hide()
 	end
 
-	if not self.Circ then
-		self.Circ = ESP.Circ:New(self.Gui)
-	end
-
-	local Scr, Ok, Z = ESP:Wts(Part.Position)
+	local X, Y, Ok, Z = Esp:Project(Part.Position)
 	if not Ok or Z <= 0 then
 		return self:Hide()
 	end
 
-	local Edge = ESP:Wts(Part.Position + Cam.CFrame.RightVector * (Part.Size.X * 0.5))
-	local Rad = math.max(math.abs(Edge.X - Scr.X), 2)
+	local Circ = self['Circ']
+	if not Circ then
+		Circ = ESP.Circ:New(Esp['Gui'])
+		self['Circ'] = Circ
+	end
 
-	self.Circ.Cfg.Col = Esp:Color('Head_Fill_Color', Rgb(255, 0, 75))
-	self.Circ.Cfg.Trans = Esp:Get('Head_Fill_Transparency') or 0.5
-	self.Circ.Cfg.Static = Esp:Get('Head_Fill_Static')
-	self.Circ.Cfg.Type = Esp:Get('Head_Fill_Type') or 'Full'
-	self.Circ.Cfg.Rot = FillRot.Bottom
-	self.Circ.Cfg.Spin = Esp:Get('Head_Spin')
-	self.Circ.Cfg.Speed = Esp:Get('Head_Spin_Speed') or 60
-	self.Circ.Cfg.Fill = Esp:Get('Head_Fill')
-	self.Circ.Cfg.Stroke = Esp:Color('Head_Color', Rgb(255, 255, 255))
-	self.Circ:Draw(true, Scr, Rad, self.Circ.Cfg)
+	local Rd = Max(Part.Size.X * 0.5 / Z * Esp['Px'], 2)
+	Circ:Draw(X, Y, Rd, Esp['HeadCfg'])
 end
 
 ESP.Name = setmetatable({}, { __index = Base })
@@ -1298,15 +1253,27 @@ ESP.Name.__index = ESP.Name
 
 function ESP.Name:New(Refs)
 	local Self = Base.New(self)
-	Self.Text = Refs.NameText
+	Self['Text'] = Refs['NameText']
 	return Self
 end
 
 function ESP.Name:Draw(Esp, On, Data)
-	Set(self.Text, 'Visible', On)
-	if On then
-		Set(self.Text, 'TextColor3', Esp:Color('Name_Color', Rgb(255, 255, 255)))
-		Set(self.Text, 'Text', Esp:NameStr(Data))
+	local Label = self['Text']
+	Set(Label, 'Visible', On)
+	if not On then
+		return
+	end
+
+	local Col = Esp['F']['Name_Color']
+	if self['Col'] ~= Col then
+		self['Col'] = Col
+		Label.TextColor3 = Col
+	end
+
+	local Str = Esp:NameStr(Data)
+	if self['Str'] ~= Str then
+		self['Str'] = Str
+		Label.Text = Str
 	end
 end
 
@@ -1315,23 +1282,46 @@ ESP.Dist.__index = ESP.Dist
 
 function ESP.Dist:New(Refs)
 	local Self = Base.New(self)
-	Self.Text = Refs.DistanceText
-	Self.Weapon = Refs.WeaponText
+	Self['Text'] = Refs['DistanceText']
+	Self['Weapon'] = Refs['WeaponText']
 	return Self
 end
 
 function ESP.Dist:Draw(Esp, On, Data)
-	Set(self.Text, 'Visible', On)
+	local F = Esp['F']
+	local Label = self['Text']
+	Set(Label, 'Visible', On)
+
 	if On then
-		Set(self.Text, 'TextColor3', Esp:Color('Distance_Color', Rgb(255, 255, 255)))
-		Set(self.Text, 'Text', tostring(Data.Dist) .. ' st')
+		local Col = F['Distance_Color']
+		if self['Col'] ~= Col then
+			self['Col'] = Col
+			Label.TextColor3 = Col
+		end
+
+		local Dist = Data['Dist']
+		if self['Dist'] ~= Dist then
+			self['Dist'] = Dist
+			Label.Text = Dist .. ' st'
+		end
 	end
 
-	local WeaponOn = Esp:Get('Weapon') and Data.Weapon ~= ''
-	Set(self.Weapon, 'Visible', WeaponOn)
+	local Tool = Data['Weapon']
+	local WeaponOn = F['Weapon'] and Tool ~= ''
+	local Label2 = self['Weapon']
+	Set(Label2, 'Visible', WeaponOn)
+
 	if WeaponOn then
-		Set(self.Weapon, 'TextColor3', Esp:Color('Weapon_Color', Rgb(255, 255, 255)))
-		Set(self.Weapon, 'Text', Data.Weapon)
+		local Col = F['Weapon_Color']
+		if self['WCol'] ~= Col then
+			self['WCol'] = Col
+			Label2.TextColor3 = Col
+		end
+
+		if self['Tool'] ~= Tool then
+			self['Tool'] = Tool
+			Label2.Text = Tool
+		end
 	end
 end
 
@@ -1340,107 +1330,125 @@ ESP.Bar.__index = ESP.Bar
 
 function ESP.Bar:New(Back, Fill, Text, Vert)
 	local Self = Base.New(self)
-	Self.Back = Back
-	Self.Fill = Fill
-	Self.Text = Text
-	Self.Grad = Fill:FindFirstChildOfClass('UIGradient')
-	Self.Vert = Vert
-	Self.Last = nil
-	Self.Tween = nil
+	Self['Back'] = Back
+	Self['Fill'] = Fill
+	Self['Text'] = Text
+	Self['Grad'] = Fill:FindFirstChildOfClass('UIGradient')
+	Self['Vert'] = Vert
+	Self['Last'] = nil
+	Self['Tween'] = nil
 	return Self
 end
 
-function ESP.Bar:SetGrad(Colors, Stops, From, To)
-	if not self.Grad then
+function ESP.Bar:SetGrad(Cfg, From, To)
+	local Grad = self['Grad']
+	if not Grad then
 		return
 	end
 
-	From = math.clamp(From or 0, 0, 1)
-	To = math.clamp(To or 1, 0, 1)
+	From = Clamp(From or 0, 0, 1)
+	To = Clamp(To or 1, 0, 1)
 	if To <= From then
-		To = math.min(From + 0.001, 1)
+		To = Min(From + 0.001, 1)
 	end
 
-	local QFrom = math.floor(From * 40 + 0.5)
-	local QTo = math.floor(To * 40 + 0.5)
-	local Key = tostring(QFrom) .. ':' .. tostring(QTo)
-	for _, Col in Colors do
-		Key = Key .. tostring(Col)
-	end
+	local QFrom = Floor(From * 40 + 0.5)
+	local QTo = Floor(To * 40 + 0.5)
+	local Stamp = Cfg['Stamp']
 
-	if self.GradKey == Key then
+	if self['QFrom'] == QFrom and self['QTo'] == QTo and self['Stamp'] == Stamp then
 		return
 	end
 
-	self.GradKey = Key
+	self['QFrom'] = QFrom
+	self['QTo'] = QTo
+	self['Stamp'] = Stamp
 
+	local Colors, Stops = Cfg['Colors'], Cfg['Stops']
 	local Span = To - From
 	local Points = {
 		ColorSequenceKeypoint.new(0, SampleGrad(Colors, Stops, From)),
 	}
 
 	for I = 1, #Colors do
-		local T = Stops and Stops[I] or ((I - 1) / math.max(#Colors - 1, 1))
+		local T = Stops and Stops[I] or ((I - 1) / Max(#Colors - 1, 1))
 		if T > From + 0.001 and T < To - 0.001 then
 			Points[#Points + 1] = ColorSequenceKeypoint.new((T - From) / Span, Colors[I])
 		end
 	end
 
 	Points[#Points + 1] = ColorSequenceKeypoint.new(1, SampleGrad(Colors, Stops, To))
-	self.Grad.Color = ColorSequence.new(Points)
+	Grad.Color = ColorSequence.new(Points)
 end
 
 function ESP.Bar:Draw(On, Pct, Val, Cfg)
-	Set(self.Back, 'Visible', On)
-	if not On then return end
+	Set(self['Back'], 'Visible', On)
+	if not On then
+		return
+	end
 
-	Pct = math.clamp(Pct or 0, 0, 1)
-	if self.Vert then
-		self:SetGrad(Cfg.Colors, Cfg.Stops, 1 - Pct, 1)
+	Pct = Clamp(Pct or 0, 0, 1)
+	local Vert = self['Vert']
+
+	if Vert then
+		self:SetGrad(Cfg, 1 - Pct, 1)
 	else
-		self:SetGrad(Cfg.Colors, Cfg.Stops, 0, 1)
+		self:SetGrad(Cfg, 0, 1)
 	end
 
-	local Size, Position
-	if self.Vert then
-		Size = Pos(1, -2, Pct, 0)
-		Position = Pos(0, 1, 1 - Pct, 0)
-	else
-		Size = Pos(Pct, 0, 1, 0)
+	local Last = self['Last']
+	if Last == nil or Abs(Last - Pct) >= 0.01 then
+		local Size, Position
+		if Vert then
+			Size = Pos(1, -2, Pct, 0)
+			Position = Pos(0, 1, 1 - Pct, 0)
+		else
+			Size = Pos(Pct, 0, 1, 0)
+		end
+
+		if Last == nil then
+			self['Fill'].Size = Size
+			if Position then
+				self['Fill'].Position = Position
+			end
+		else
+			if self['Tween'] then
+				self['Tween']:Cancel()
+			end
+
+			local Goals = { Size = Size }
+			if Position then
+				Goals['Position'] = Position
+			end
+
+			self['Tween'] = TweenService:Create(self['Fill'], Tween, Goals)
+			self['Tween']:Play()
+		end
+
+		self['Last'] = Pct
 	end
 
-	if self.Last == nil then
-		self.Fill.Size = Size
-		if Position then
-			self.Fill.Position = Position
-		end
-	elseif math.abs(self.Last - Pct) >= 0.01 then
-		if self.Tween then
-			self.Tween:Cancel()
-		end
-
-		local Goals = { Size = Size }
-		if Position then
-			Goals.Position = Position
-		end
-
-		self.Tween = TweenService:Create(self.Fill, Tween, Goals)
-		self.Tween:Play()
+	local Label = self['Text']
+	if not Label then
+		return
 	end
 
-	self.Last = Pct
+	Val = Val or Floor(Pct * 100 + 0.5)
+	Set(Label, 'Visible', Cfg['Text'] and Val ~= 0 and Val ~= 100)
 
-	Val = Val or math.floor(Pct * 100 + 0.5)
-	if self.Text then
-		Set(self.Text, 'Visible', Cfg.Text and Val ~= 0 and Val ~= 100)
+	local Col = Cfg['TextCol']
+	if Cfg['Dynamic'] and Cfg['Stops'] then
+		Col = SampleGrad(Cfg['Colors'], Cfg['Stops'], 1 - Pct)
+	end
 
-		local Col = Cfg.TextCol
-		if Cfg.Dynamic and Cfg.Colors and Cfg.Stops then
-			Col = SampleGrad(Cfg.Colors, Cfg.Stops, 1 - Pct)
-		end
+	if self['Col'] ~= Col then
+		self['Col'] = Col
+		Label.TextColor3 = Col
+	end
 
-		Set(self.Text, 'TextColor3', Col)
-		Set(self.Text, 'Text', tostring(Val))
+	if self['Val'] ~= Val then
+		self['Val'] = Val
+		Label.Text = tostring(Val)
 	end
 end
 
@@ -1449,101 +1457,134 @@ ESP.Flag.__index = ESP.Flag
 
 function ESP.Flag:New(Refs)
 	local Self = Base.New(self)
-	Self.Holder = Refs.FlagsHolder
-	Self.Temp = Refs.FlagText
-	Self.Temp.Visible = false
-	Self.Labels = {}
-	Self.Hold = {}
+	Self['Holder'] = Refs['FlagsHolder']
+	Self['Temp'] = Refs['FlagText']
+	Self['Temp'].Visible = false
+	Self['Labels'] = {}
+	Self['Hold'] = {}
 	return Self
 end
 
 function ESP.Flag:Label(Name, Order, Col)
-	local Lbl = self.Labels[Name]
-	if not Lbl then
-		Lbl = self.Temp:Clone()
+	local Entry = self['Labels'][Name]
+	if not Entry then
+		local Lbl = self['Temp']:Clone()
 		Lbl.Name = '\0'
-		Lbl.Parent = self.Holder
-		self.Labels[Name] = Lbl
-		table.insert(self.Items, Lbl)
+		Lbl.Text = Name
+		Lbl.Parent = self['Holder']
+		Entry = { Lbl = Lbl, Vis = false }
+		self['Labels'][Name] = Entry
+		table.insert(self['Items'], Lbl)
 	end
-	Set(Lbl, 'LayoutOrder', Order)
-	Set(Lbl, 'Text', Name)
-	Set(Lbl, 'TextColor3', Col)
-	Set(Lbl, 'Visible', true)
-	return Lbl
+
+	local Lbl = Entry['Lbl']
+	if Entry['Order'] ~= Order then
+		Entry['Order'] = Order
+		Lbl.LayoutOrder = Order
+	end
+
+	if Entry['Col'] ~= Col then
+		Entry['Col'] = Col
+		Lbl.TextColor3 = Col
+	end
+
+	if not Entry['Vis'] then
+		Entry['Vis'] = true
+		Lbl.Visible = true
+	end
 end
 
 function ESP.Flag:Draw(Esp, On, Data)
-	Set(self.Holder, 'Visible', On)
-	if not On or not Data.Flags then return end
+	Set(self['Holder'], 'Visible', On)
+	local Flags = Data['Flags']
+	if not On or not Flags then
+		return
+	end
 
-	local Col = Esp:Color('Flag_Color', Rgb(255, 255, 255))
-	local Now = os.clock()
+	local Col = Esp['F']['Flag_Color']
+	local Now = Esp['Now']
+	local Hold = self['Hold']
 	local Order = 0
 
 	for _, Name in FlagOrder do
-		local Active = Data.Flags[Name]
+		local Active = Flags[Name]
 		if Active then
-			self.Hold[Name] = Now
+			Hold[Name] = Now
 		end
 
-		local Show = Active or (self.Hold[Name] and Now - self.Hold[Name] < FlagHold)
-		local Lbl = self.Labels[Name]
-
-		if Show then
+		local Stamp = Hold[Name]
+		if Active or (Stamp and Now - Stamp < FlagHold) then
 			Order += 1
 			self:Label(Name, Order, Col)
-		elseif Lbl then
-			Set(Lbl, 'Visible', false)
+		else
+			local Entry = self['Labels'][Name]
+			if Entry and Entry['Vis'] then
+				Entry['Vis'] = false
+				Entry['Lbl'].Visible = false
+			end
 		end
 	end
 end
 
--- // finobe's r15 skeleton mapping system | https://github.com/i77lhm
+-- // Finobe's r15 skeleton mapping system | https://github.com/i77lhm
 ESP.Skel = setmetatable({}, { __index = Base })
 ESP.Skel.__index = ESP.Skel
 
 function ESP.Skel:New()
-	return Base.New(self)
+	local Self = Base.New(self)
+	Self['Map'] = {}
+	Self['Stamp'] = 0
+	return Self
 end
 
 function ESP.Skel:Boot()
-	if not self.Lines then
-		self.Lines = table.create(BoneMax)
+	if self['Lines'] then
+		return
 	end
 
-	if not self.Back then
-		self.Back = table.create(BoneMax)
-	end
+	self['Lines'] = table.create(BoneMax)
+	self['Back'] = table.create(BoneMax)
 
 	for I = 1, BoneMax do
-		if not self.Back[I] then
-			local Back = Line()
-			Back.Thickness = 3
-			Back.ZIndex = 1
-			self.Back[I] = Back
-		end
-
-		if not self.Lines[I] then
-			local LineObj = Line()
-			LineObj.Thickness = 1
-			LineObj.ZIndex = 2
-			self.Lines[I] = LineObj
-		end
+		self['Back'][I] = Line(3, 1)
+		self['Lines'][I] = Line(1, 2)
 	end
 end
 
 function ESP.Skel:Hide()
-	if not self.Lines then
+	local Lines = self['Lines']
+	if not Lines then
 		return
 	end
 
 	for I = 1, BoneMax do
-		Set(self.Lines[I], 'Visible', false)
-		if self.Back[I] then
-			Set(self.Back[I], 'Visible', false)
+		HideLine(Lines[I])
+		HideLine(self['Back'][I])
+	end
+end
+
+function ESP.Skel:Build(Char, Now)
+	if self['Char'] == Char and Now - self['Stamp'] < 0.5 then
+		return self['Map']
+	end
+
+	self['Char'] = Char
+	self['Stamp'] = Now
+
+	local Map = self['Map']
+	table.clear(Map)
+
+	local Rig = Char:FindFirstChild('UpperTorso') and Bones['R15'] or Bones['R6']
+	for I = 1, #Rig do
+		local Bone = Rig[I]
+		local A = Char:FindFirstChild(JointName(Bone[1]))
+		local B = Char:FindFirstChild(JointName(Bone[2]))
+		if A and B then
+			Map[I] = { A, Bone[1], B, Bone[2] }
 		end
 	end
+
+	return Map
 end
 
 function ESP.Skel:Draw(Esp, On, Data)
@@ -1553,45 +1594,46 @@ function ESP.Skel:Draw(Esp, On, Data)
 
 	self:Boot()
 
-	local Char = Data.Char
-	local Rig = Char:FindFirstChild('UpperTorso') and Bones.R15 or Bones.R6
-	local Col = Esp:Color('Skeleton_Color', Rgb(255, 255, 255))
-	local OutlineCol = Esp:Color('Skeleton_Outline_Color', Rgb(0, 0, 0))
+	local F = Esp['F']
+	local Map = self:Build(Data['Char'], Esp['Now'])
+	local Col = F['Skeleton_Color']
+	local OutCol = F['Skeleton_Outline_Color']
+	local Outline = F['Skeleton_Outline']
+	local Lines, Back = self['Lines'], self['Back']
 
 	for I = 1, BoneMax do
-		local LineObj = self.Lines[I]
-		local Back = self.Back[I]
-		local Bone = Rig[I]
-		local From = Bone and Joint(Char, Bone[1])
-		local To = Bone and Joint(Char, Bone[2])
-
-		if not From or not To then
-			Set(LineObj, 'Visible', false)
-			Set(Back, 'Visible', false)
+		local Bone = Map[I]
+		if not Bone then
+			HideLine(Lines[I])
+			HideLine(Back[I])
 			continue
 		end
 
-		local Start, OnA = ESP:Wts(From)
-		local Finish, OnB = ESP:Wts(To)
+		local X1, Y1, OnA = Esp:Project(JointPos(Bone[1], Bone[2]))
+		local X2, Y2, OnB = Esp:Project(JointPos(Bone[3], Bone[4]))
 
 		if OnA and OnB then
-			StrokeLine(Back, Start, Finish, OutlineCol, 3)
-			StrokeLine(LineObj, Start, Finish, Col, 1)
+			if Outline then
+				StrokeLine(Back[I], X1, Y1, X2, Y2, OutCol, 3)
+			else
+				HideLine(Back[I])
+			end
+			StrokeLine(Lines[I], X1, Y1, X2, Y2, Col, 1)
 		else
-			Set(LineObj, 'Visible', false)
-			Set(Back, 'Visible', false)
+			HideLine(Lines[I])
+			HideLine(Back[I])
 		end
 	end
 end
 
 function ESP.Skel:Kill()
-	if self.Lines then
-		KillLines(self.Lines)
+	if self['Lines'] then
+		KillLines(self['Lines'])
+		KillLines(self['Back'])
+		self['Lines'] = nil
+		self['Back'] = nil
 	end
-
-	if self.Back then
-		KillLines(self.Back)
-	end
+	table.clear(self['Map'])
 end
 
 ESP.HL = setmetatable({}, { __index = Base })
@@ -1607,11 +1649,11 @@ function ESP.HL:New()
 end
 
 function ESP.HL:Boot()
-	if self.Inst then
+	if self['Inst'] then
 		return
 	end
 
-	self.Inst = Inst('Highlight', {
+	self['Inst'] = Inst('Highlight', {
 		Parent = Hui,
 		Enabled = false,
 		FillColor = Rgb(255, 255, 255),
@@ -1620,34 +1662,70 @@ function ESP.HL:Boot()
 		OutlineTransparency = 0,
 		DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
 	})
-	table.insert(self.Items, self.Inst)
+	table.insert(self['Items'], self['Inst'])
 end
 
 function ESP.HL:Hide()
-	if not self.Inst then
+	local Obj = self['Inst']
+	if not Obj or not self['On'] then
 		return
 	end
 
-	Set(self.Inst, 'Enabled', false)
-	Set(self.Inst, 'Adornee', nil)
+	self['On'] = false
+	self['Char'] = nil
+	Obj.Enabled = false
+	Obj.Adornee = nil
 end
 
-function ESP.HL:Draw(Esp, On, Char)
-	local Hum = Char and Char:FindFirstChildOfClass('Humanoid')
+function ESP.HL:Draw(Esp, On, Char, Hum)
 	if not On or not Char or not Hum or Hum.Health <= 0 then
 		return self:Hide()
 	end
 
 	self:Boot()
 
-	local Outline = Esp:Get('Highlight_Outline')
-	Set(self.Inst, 'Adornee', Char)
-	Set(self.Inst, 'FillColor', Esp:Color('Highlight_Fill', Rgb(255, 255, 255)))
-	Set(self.Inst, 'FillTransparency', Esp:Get('Highlight_Fill_Transparency') or 0.5)
-	Set(self.Inst, 'OutlineColor', Esp:Color('Highlight_Outline_Color', Rgb(0, 0, 0)))
-	Set(self.Inst, 'OutlineTransparency', Outline and (Esp:Get('Highlight_Outline_Transparency') or 0) or 1)
-	Set(self.Inst, 'DepthMode', DepthMode[Esp:Get('Highlight_Depth')] or DepthMode.AlwaysOnTop)
-	Set(self.Inst, 'Enabled', true)
+	local F = Esp['F']
+	local Obj = self['Inst']
+
+	if self['Char'] ~= Char then
+		self['Char'] = Char
+		Obj.Adornee = Char
+	end
+
+	local Fill = F['Highlight_Fill']
+	if self['Fill'] ~= Fill then
+		self['Fill'] = Fill
+		Obj.FillColor = Fill
+	end
+
+	local Trans = F['Highlight_Fill_Transparency'] or 0.5
+	if self['Trans'] ~= Trans then
+		self['Trans'] = Trans
+		Obj.FillTransparency = Trans
+	end
+
+	local OutCol = F['Highlight_Outline_Color']
+	if self['OutCol'] ~= OutCol then
+		self['OutCol'] = OutCol
+		Obj.OutlineColor = OutCol
+	end
+
+	local OutTrans = F['Highlight_Outline'] and (F['Highlight_Outline_Transparency'] or 0) or 1
+	if self['OutTrans'] ~= OutTrans then
+		self['OutTrans'] = OutTrans
+		Obj.OutlineTransparency = OutTrans
+	end
+
+	local Depth = DepthMode[F['Highlight_Depth']] or DepthMode['AlwaysOnTop']
+	if self['Depth'] ~= Depth then
+		self['Depth'] = Depth
+		Obj.DepthMode = Depth
+	end
+
+	if not self['On'] then
+		self['On'] = true
+		Obj.Enabled = true
+	end
 end
 
 ESP.Trace = setmetatable({}, { __index = Base })
@@ -1658,23 +1736,17 @@ function ESP.Trace:New()
 end
 
 function ESP.Trace:Boot()
-	if self.Line then
+	if self['Line'] then
 		return
 	end
 
-	self.Back = Line()
-	self.Line = Line()
-	self.Back.ZIndex = 1
-	self.Line.ZIndex = 2
+	self['Back'] = Line(3, 1)
+	self['Line'] = Line(1, 2)
 end
 
 function ESP.Trace:Hide()
-	if not self.Line then
-		return
-	end
-
-	Set(self.Line, 'Visible', false)
-	Set(self.Back, 'Visible', false)
+	HideLine(self['Line'])
+	HideLine(self['Back'])
 end
 
 function ESP.Trace:Draw(Esp, On, Data)
@@ -1684,24 +1756,27 @@ function ESP.Trace:Draw(Esp, On, Data)
 
 	self:Boot()
 
-	local From = Esp.From
-	local To = Vec(Data.Pos.X + Data.Size.X * 0.5, Data.Pos.Y + Data.Size.Y * 0.5)
-	local Col = Esp:Color('Tracer_Color', Rgb(255, 255, 255))
-	local Thick = Esp:Get('Tracer_Thickness') or 1
+	local F = Esp['F']
+	local X1, Y1 = Esp['FromX'], Esp['FromY']
+	local X2 = Data['X'] + Data['W'] * 0.5
+	local Y2 = Data['Y'] + Data['H'] * 0.5
+	local Thick = F['Tracer_Thickness'] or 1
 
-	StrokeLine(self.Line, From, To, Col, Thick)
+	StrokeLine(self['Line'], X1, Y1, X2, Y2, F['Tracer_Color'], Thick)
 
-	if Esp:Get('Tracer_Outline') then
-		StrokeLine(self.Back, From, To, Esp:Color('Tracer_Outline_Color', Rgb(0, 0, 0)), Thick + 2)
+	if F['Tracer_Outline'] then
+		StrokeLine(self['Back'], X1, Y1, X2, Y2, F['Tracer_Outline_Color'], Thick + 2)
 	else
-		Set(self.Back, 'Visible', false)
+		HideLine(self['Back'])
 	end
 end
 
 function ESP.Trace:Kill()
-	if self.Line then
-		self.Line:Remove()
-		self.Back:Remove()
+	if self['Line'] then
+		self['Line']['Obj']:Remove()
+		self['Back']['Obj']:Remove()
+		self['Line'] = nil
+		self['Back'] = nil
 	end
 end
 
@@ -1713,238 +1788,536 @@ function ESP.Look:New()
 end
 
 function ESP.Look:Boot()
-	if not self.Back then
-		self.Back = Line()
-		self.Back.Thickness = 3
-		self.Back.ZIndex = 1
+	if self['Line'] then
+		return
 	end
 
-	if not self.Line then
-		self.Line = Line()
-		self.Line.Thickness = 1
-		self.Line.ZIndex = 2
-	end
+	self['Back'] = Line(3, 1)
+	self['Line'] = Line(1, 2)
 end
 
 function ESP.Look:Hide()
-	if self.Line then
-		Set(self.Line, 'Visible', false)
-	end
-
-	if self.Back then
-		Set(self.Back, 'Visible', false)
-	end
+	HideLine(self['Line'])
+	HideLine(self['Back'])
 end
 
 function ESP.Look:Draw(Esp, On, Data)
-	local Head = Data.Head
+	local Head = Data['Head']
 	if not On or not Head then
 		return self:Hide()
 	end
 
-	local Start, OnA = ESP:Wts(Head.Position)
-	local Finish, OnB = ESP:Wts(Head.Position + Head.CFrame.LookVector * (Esp:Get('Look_Length') or 3))
+	local F = Esp['F']
+	local CF = Head.CFrame
+	local X1, Y1, OnA = Esp:Project(CF.Position)
+	local X2, Y2, OnB = Esp:Project(CF.Position + CF.LookVector * (F['Look_Length'] or 3))
+
 	if not OnA and not OnB then
 		return self:Hide()
 	end
 
 	self:Boot()
 
-	local Col = Esp:Color('Look_Color', Rgb(255, 255, 255))
-	local Thick = Esp:Get('Look_Thickness') or 1
-	local OutlineCol = Esp:Color('Look_Outline_Color', Rgb(0, 0, 0))
+	local Thick = F['Look_Thickness'] or 1
+	if F['Look_Outline'] then
+		StrokeLine(self['Back'], X1, Y1, X2, Y2, F['Look_Outline_Color'], Thick + 2)
+	else
+		HideLine(self['Back'])
+	end
 
-	StrokeLine(self.Back, Start, Finish, OutlineCol, Thick + 2)
-	StrokeLine(self.Line, Start, Finish, Col, Thick)
+	StrokeLine(self['Line'], X1, Y1, X2, Y2, F['Look_Color'], Thick)
 end
 
 function ESP.Look:Kill()
-	if self.Line then
-		self.Line:Remove()
-	end
-
-	if self.Back then
-		self.Back:Remove()
+	if self['Line'] then
+		self['Line']['Obj']:Remove()
+		self['Back']['Obj']:Remove()
+		self['Line'] = nil
+		self['Back'] = nil
 	end
 end
 
 ESP.Object = {}
 ESP.Object.__index = ESP.Object
 
-function ESP.Object:New(Plr, Gui, Temp, TempRefs)
-	local Self = setmetatable({ Plr = Plr }, ESP.Object)
-	local Root, Lookup = CloneTree(Temp)
-	Self.Root = Root
-	Self.Root.Visible = false
-	Self.Root.Parent = Gui
+function ESP.Object:New(Plr)
+	local Self = setmetatable({
+		Plr = Plr,
+		Name = Plr.Name,
+		Display = Plr.DisplayName,
+		Both = Plr.DisplayName .. ' (@' .. Plr.Name .. ')',
+		Limb = {},
+		Stamp = 0,
+		Data = { Flags = {} },
+		Ready = false,
+	}, ESP.Object)
 
-	local Refs = {}
-	for Key, Obj in TempRefs do
-		Refs[Key] = Lookup[Obj]
-	end
-
-	Self.Parts = {
-		Box = ESP.Box:New(Refs),
-		Fill = ESP.Fill:New(Refs),
-		Name = ESP.Name:New(Refs),
-		Dist = ESP.Dist:New(Refs),
-		Health = ESP.Bar:New(Refs.HealthBack, Refs.HealthBar, Refs.HealthText, true),
-		Armor = ESP.Bar:New(Refs.ArmorBack, Refs.ArmorBar, Refs.ArmorText, false),
-		Flag = ESP.Flag:New(Refs),
-		Skel = ESP.Skel:New(),
-		HL = ESP.HL:New(),
-		Head = ESP.Head:New(Gui),
-		Trace = ESP.Trace:New(),
-		Look = ESP.Look:New(),
-	}
+	Self['Skel'] = ESP.Skel:New()
+	Self['HL'] = ESP.HL:New()
+	Self['Head'] = ESP.Head:New()
+	Self['Trace'] = ESP.Trace:New()
+	Self['Look'] = ESP.Look:New()
 
 	return Self
 end
 
+function ESP.Object:Boot(Esp)
+	if self['Ready'] then
+		return
+	end
+
+	local Root, Lookup = CloneTree(Esp['Temp'])
+	Root.Visible = false
+	Root.Parent = Esp['Gui']
+	self['Root'] = Root
+
+	local Refs = {}
+	for Key, Obj in Esp['TempRefs'] do
+		if Key == 'Edges' then
+			local Edges = {}
+			for I, Edge in Obj do
+				Edges[I] = Lookup[Edge]
+			end
+			Refs['Edges'] = Edges
+		else
+			Refs[Key] = Lookup[Obj]
+		end
+	end
+
+	self['Box'] = ESP.Box:New(Refs)
+	self['Fill'] = ESP.Fill:New(Refs)
+	self['Label'] = ESP.Name:New(Refs)
+	self['Dist'] = ESP.Dist:New(Refs)
+	self['Health'] = ESP.Bar:New(Refs['HealthBack'], Refs['HealthBar'], Refs['HealthText'], true)
+	self['Armor'] = ESP.Bar:New(Refs['ArmorBack'], Refs['ArmorBar'], Refs['ArmorText'], false)
+	self['Flag'] = ESP.Flag:New(Refs)
+	self['Ready'] = true
+end
+
+function ESP.Object:Refresh()
+	local Char = self['Plr'].Character
+	if Char ~= self['Char'] then
+		self['Char'] = Char
+		self['Hum'] = nil
+		self['Part'] = nil
+		self['HeadPart'] = nil
+		self['Tool'] = nil
+		self['ToolStr'] = ''
+		table.clear(self['Limb'])
+		self['Skel']['Char'] = nil
+	end
+
+	if not Char then
+		return
+	end
+
+	local Hum = self['Hum']
+	if not Hum or Hum.Parent ~= Char then
+		Hum = Char:FindFirstChildOfClass('Humanoid')
+		self['Hum'] = Hum
+	end
+
+	local Part = self['Part']
+	if not Part or Part.Parent ~= Char then
+		Part = Char:FindFirstChild('HumanoidRootPart')
+			or Char:FindFirstChild('UpperTorso')
+			or Char:FindFirstChild('Torso')
+			or Char:FindFirstChild('LowerTorso')
+			or Char:FindFirstChild('Head')
+		self['Part'] = Part
+	end
+
+	local HeadPart = self['HeadPart']
+	if not HeadPart or HeadPart.Parent ~= Char then
+		self['HeadPart'] = Char:FindFirstChild('Head')
+	end
+
+	return Char, Hum, self['Part']
+end
+
+function ESP.Object:Limbs(Char)
+	local Limb = self['Limb']
+	local Now = Clock()
+
+	if Limb[1] and Limb[1].Parent == Char and Now - self['Stamp'] < 0.5 then
+		return Limb
+	end
+
+	self['Stamp'] = Now
+	table.clear(Limb)
+
+	for _, Part in Char:GetChildren() do
+		if BodyPart[Part.Name] and Part:IsA('BasePart') then
+			Limb[#Limb + 1] = Part
+		end
+	end
+
+	return Limb
+end
+
+function ESP.Object:Weapon(Char)
+	local Tool = Char:FindFirstChildOfClass('Tool')
+	if Tool == self['Tool'] then
+		return self['ToolStr']
+	end
+
+	self['Tool'] = Tool
+	if not Tool then
+		self['ToolStr'] = ''
+		return ''
+	end
+
+	local Name = Tool.Name
+	if Name:sub(1, 1) == '[' and Name:sub(-1) == ']' then
+		self['ToolStr'] = Name
+	else
+		self['ToolStr'] = '[' .. Name .. ']'
+	end
+
+	return self['ToolStr']
+end
+
 function ESP.Object:Hide()
-	Set(self.Root, 'Visible', false)
-	self.Parts.Skel:Hide()
-	self.Parts.HL:Hide()
-	self.Parts.Head:Hide()
-	self.Parts.Trace:Hide()
-	self.Parts.Look:Hide()
+	if self['Ready'] and self['Vis'] then
+		self['Vis'] = false
+		self['Root'].Visible = false
+	end
+
+	self['Skel']:Hide()
+	self['HL']:Hide()
+	self['Head']:Hide()
+	self['Trace']:Hide()
+	self['Look']:Hide()
 end
 
 function ESP.Object:Render(Esp, Data)
-	Set(self.Root, 'Visible', true)
-	Set(self.Root, 'Position', UDim2.fromOffset(Data.Pos.X, Data.Pos.Y))
-	Set(self.Root, 'Size', UDim2.fromOffset(Data.Size.X, Data.Size.Y))
+	self:Boot(Esp)
 
-	self.Parts.Box:Draw(Esp, Esp:Get('Boxes'))
-	self.Parts.Fill:Draw(Esp, Esp:Get('Fill'))
-	self.Parts.Name:Draw(Esp, Esp:Get('Names'), Data)
-	self.Parts.Dist:Draw(Esp, Esp:Get('Distance'), Data)
-	self.Parts.Health:Draw(Esp:Get('Healthbar'), Data.Health, Data.HealthVal, Esp.HCfg)
-	self.Parts.Armor:Draw(Esp:Get('Armorbar'), 1, 100, Esp.ACfg)
-	self.Parts.Flag:Draw(Esp, Esp:Get('EspFlags'), Data)
-	self.Parts.Skel:Draw(Esp, Esp:Get('Skeletons'), Data)
-	self.Parts.HL:Draw(Esp, Esp:Get('Highlights'), Data.Char)
-	self.Parts.Head:Draw(Esp, Esp:Get('Head'), Data)
-	self.Parts.Trace:Draw(Esp, Esp:Get('Tracers'), Data)
-	self.Parts.Look:Draw(Esp, Esp:Get('Look'), Data)
+	local F = Esp['F']
+	local Root = self['Root']
+	local X, Y = Data['X'], Data['Y']
+	local W, H = Data['W'], Data['H']
+
+	if not self['Vis'] then
+		self['Vis'] = true
+		Root.Visible = true
+	end
+
+	if self['X'] ~= X or self['Y'] ~= Y then
+		self['X'] = X
+		self['Y'] = Y
+		Root.Position = Off(X, Y)
+	end
+
+	if self['W'] ~= W or self['H'] ~= H then
+		self['W'] = W
+		self['H'] = H
+		Root.Size = Off(W, H)
+	end
+
+	self['Box']:Draw(Esp, F['Boxes'])
+	self['Fill']:Draw(Esp, F['Fill'])
+	self['Label']:Draw(Esp, F['Names'], Data)
+	self['Dist']:Draw(Esp, F['Distance'], Data)
+	self['Health']:Draw(F['Healthbar'], Data['Health'], Data['HealthVal'], Esp['HCfg'])
+	self['Armor']:Draw(F['Armorbar'], 1, 100, Esp['ACfg'])
+	self['Flag']:Draw(Esp, F['EspFlags'], Data)
+	self['Skel']:Draw(Esp, F['Skeletons'], Data)
+	self['HL']:Draw(Esp, F['Highlights'], Data['Char'], self['Hum'])
+	self['Head']:Draw(Esp, F['Head'], Data)
+	self['Trace']:Draw(Esp, F['Tracers'], Data)
+	self['Look']:Draw(Esp, F['Look'], Data)
 end
-
 
 function ESP.Object:Kill()
-	for _, Part in self.Parts do
-		Part:Kill()
+	self['Skel']:Kill()
+	self['HL']:Kill()
+	self['Head']:Kill()
+	self['Trace']:Kill()
+	self['Look']:Kill()
+
+	if self['Ready'] then
+		self['Box']:Kill()
+		self['Fill']:Kill()
+		self['Label']:Kill()
+		self['Dist']:Kill()
+		self['Health']:Kill()
+		self['Armor']:Kill()
+		self['Flag']:Kill()
+		self['Root']:Destroy()
+		self['Ready'] = false
 	end
-	self.Root:Destroy()
 end
 
-function ESP:Add(Plr)
-	if Plr == Local or self.Objects[Plr] then
+function ESP:Data(Obj)
+	local Char, Hum, Part = Obj:Refresh()
+	if not Char or not Hum or not Part or Hum.Health <= 0 then
 		return
 	end
-	self.Objects[Plr] = ESP.Object:New(Plr, self.Gui, self.Temp, self.TempRefs)
-end
 
-function ESP:Rem(Plr)
-	local Obj = self.Objects[Plr]
-	if not Obj then return end
-	Obj:Kill()
-	self.Objects[Plr] = nil
+	local F = self['F']
+	local CamPos = self['CamPos']
+	local Where = Part.Position
+	local Offset = Where - BoxDrop
+	local Dist = (Where - CamPos).Magnitude
+
+	local Cap = F['Max_Distance'] or 0
+	if Cap > 0 and Dist > Cap then
+		return
+	end
+
+	local X, Y, On, Depth = self:Project(Offset)
+	if Depth <= 0.15 then
+		return
+	end
+
+	local Ragdoll = self:IsRagdolled(Hum, Char)
+	local Bx, By, Bw, Bh
+
+	if F['Box_Dynamic'] or Ragdoll then
+		local Vp = self['Vp']
+		local Sx, Sy, Sw, Sh = self:StableBounds(X, Y, Depth)
+		local Mx, My = Sw * 2, Sh * 2
+
+		if X > -Mx and Y > -My and X < Vp.X + Mx and Y < Vp.Y + My then
+			Bx, By, Bw, Bh = self:DynamicBounds(Obj, Char)
+		end
+
+		if not Bx and On then
+			Bx, By, Bw, Bh = Sx, Sy, Sw, Sh
+		end
+	elseif On then
+		Bx, By, Bw, Bh = self:StableBounds(X, Y, Depth)
+	end
+
+	if not Bx then
+		return
+	end
+
+	local Data = Obj['Data']
+	Data['X'] = Bx
+	Data['Y'] = By
+	Data['W'] = Bw
+	Data['H'] = Bh
+	Data['Char'] = Char
+	Data['Head'] = Obj['HeadPart']
+	Data['Name'] = Obj['Name']
+	Data['Display'] = Obj['Display']
+	Data['Both'] = Obj['Both']
+	Data['Dist'] = Floor(Dist + 0.5)
+	Data['Weapon'] = F['Weapon'] and Obj:Weapon(Char) or ''
+
+	if F['Healthbar'] then
+		local MaxHp = Hum.MaxHealth
+		local Hp = Hum.Health
+		Data['Health'] = MaxHp > 0 and Hp / MaxHp or 0
+		Data['HealthVal'] = Floor(Hp + 0.5)
+	else
+		Data['Health'] = 0
+		Data['HealthVal'] = 0
+	end
+
+	if F['EspFlags'] then
+		local State = Hum:GetState()
+		local Air = State == HS.Freefall or State == HS.FallingDown or State == HS.Jumping
+		local Climbing = State == HS.Climbing
+		local Swimming = State == HS.Swimming
+		local Seated = State == HS.Seated or Hum.Sit or Hum.SeatPart ~= nil
+		local Flying = State == HS.Flying
+		local Moving = Hum.MoveDirection.Magnitude > 0.05
+
+		local Flags = Data['Flags']
+		Flags['Ragdoll'] = Ragdoll
+		Flags['Falling'] = State == HS.Freefall or State == HS.FallingDown
+		Flags['Jumping'] = State == HS.Jumping
+		Flags['Climbing'] = Climbing
+		Flags['Swimming'] = Swimming
+		Flags['Seated'] = Seated
+		Flags['Flying'] = Flying
+		Flags['Running'] = Moving and not (Air or Climbing or Swimming or Seated or Ragdoll or Flying)
+	end
+
+	return Data
 end
 
 function ESP:Pack()
-	self.Bag = {}
-	self.Vp = Cam.ViewportSize
-	self.Px = self.Vp.Y / (2 * math.tan(math.rad(Cam.FieldOfView) * 0.5))
+	local F = self['F']
+	local Src = self['ExtFlags'] or self['Flags']
 
-	local Vp = self.Vp
-	local Origin = self:Get('Tracer_Origin') or 'Bottom'
+	for Key, Val in Src do
+		if type(Val) == 'table' then
+			if Val['Get'] then
+				Val = Val:Get()
+			end
+			if type(Val) == 'table' then
+				Val = Val['Color'] or Val[1]
+			end
+		end
+		F[Key] = Val
+	end
+
+	local CF = Cam.CFrame
+	self['CamPos'] = CF.Position
+	self['Now'] = Clock()
+
+	local Vp = Cam.ViewportSize
+	self['Vp'] = Vp
+	self['Px'] = Vp.Y / (2 * Tan(Rad(Cam.FieldOfView) * 0.5))
+
+	local Origin = F['Tracer_Origin'] or 'Bottom'
 	if Origin == 'Top' then
-		self.From = Vec(Vp.X * 0.5, 0)
+		self['FromX'], self['FromY'] = Vp.X * 0.5, 0
 	elseif Origin == 'Center' then
-		self.From = Vec(Vp.X * 0.5, Vp.Y * 0.5)
+		self['FromX'], self['FromY'] = Vp.X * 0.5, Vp.Y * 0.5
 	elseif Origin == 'Mouse' then
-		self.From = Input:GetMouseLocation()
+		local M = Input:GetMouseLocation()
+		self['FromX'], self['FromY'] = M.X, M.Y
 	else
-		self.From = Vec(Vp.X * 0.5, Vp.Y)
+		self['FromX'], self['FromY'] = Vp.X * 0.5, Vp.Y
 	end
 
-	local H = self.HCfg
-	if not H then
-		H = { Colors = {}, Stops = { 0, 0.4, 0.7, 1 } }
-		self.HCfg = H
+	local Fill = self['FCfg']
+	local Type = F['Fill_Type'] or 'Full'
+	local Rot = F['Fill_Rotation']
+	if not Rot and Type ~= 'Full' then
+		Rot = FillRot[F['Fill_Half'] or 'Top'] or FillRot['Top']
 	end
-	H.Colors[1] = self:Color('Health_High', Rgb(0, 255, 80))
-	H.Colors[2] = self:Color('Health_Mid', Rgb(255, 230, 0))
-	H.Colors[3] = Rgb(255, 120, 0)
-	H.Colors[4] = self:Color('Health_Low', Rgb(255, 40, 40))
-	H.Text = self:Get('Health_Text')
-	H.Dynamic = self:Get('Health_Text_Dynamic')
-	H.TextCol = self:Color('Health_Text_Color', Rgb(0, 255, 80))
 
-	local A = self.ACfg
-	if not A then
-		A = { Colors = {} }
-		self.ACfg = A
+	Fill['Col'] = F['Fill_Color'] or Rgb(255, 255, 255)
+	Fill['Trans'] = F['Fill_Transparency'] or 0.5
+	Fill['Static'] = F['Fill_Static']
+	Fill['Type'] = Type
+	Fill['Spin'] = F['Fill_Spin']
+
+	if Fill['Spin'] then
+		Fill['Rot'] = Floor(self['Now'] * (F['Fill_Spin_Speed'] or 60)) % 360
+	else
+		Fill['Rot'] = Rot or FillRot['Bottom']
 	end
-	local AC = self:Color('Armor_Color', Rgb(0, 85, 255))
-	A.Colors[1] = AC
-	A.Colors[2] = AC
-	A.Text = self:Get('Armor_Text')
-	A.TextCol = AC
+
+	local Head = self['HeadCfg']
+	Head['Col'] = F['Head_Fill_Color'] or Rgb(255, 0, 75)
+	Head['Trans'] = F['Head_Fill_Transparency'] or 0.5
+	Head['Static'] = F['Head_Fill_Static']
+	Head['Type'] = F['Head_Fill_Type'] or 'Full'
+	Head['Fill'] = F['Head_Fill']
+	Head['Stroke'] = F['Head_Color']
+
+	if F['Head_Spin'] then
+		Head['Rot'] = Floor(self['Now'] * (F['Head_Spin_Speed'] or 60)) % 360
+	else
+		Head['Rot'] = FillRot['Bottom']
+	end
+
+	local H = self['HCfg']
+	local Hi = F['Health_High'] or Rgb(0, 255, 80)
+	local Mid = F['Health_Mid'] or Rgb(255, 230, 0)
+	local Lo = F['Health_Low'] or Rgb(255, 40, 40)
+	local Cols = H['Colors']
+
+	if Cols[1] ~= Hi or Cols[2] ~= Mid or Cols[4] ~= Lo then
+		Cols[1] = Hi
+		Cols[2] = Mid
+		Cols[3] = Rgb(255, 120, 0)
+		Cols[4] = Lo
+		H['Stamp'] += 1
+	end
+
+	H['Text'] = F['Health_Text']
+	H['Dynamic'] = F['Health_Text_Dynamic']
+	H['TextCol'] = F['Health_Text_Color'] or Hi
+
+	local A = self['ACfg']
+	local AC = F['Armor_Color'] or Rgb(0, 85, 255)
+	if A['Colors'][1] ~= AC then
+		A['Colors'][1] = AC
+		A['Colors'][2] = AC
+		A['Stamp'] += 1
+	end
+
+	A['Text'] = F['Armor_Text']
+	A['TextCol'] = AC
 end
 
 function ESP:Step()
 	Cam = Workspace.CurrentCamera
-	if not Cam then return end
+	if not Cam then
+		return
+	end
 
-	self.Bag = {}
-
-	if not self:Get('Enabled') then
-		if not self.Off then
-			self.Off = true
-			for _, Obj in self.Objects do
+	if not self:Raw('Enabled') then
+		if not self['Idle'] then
+			self['Idle'] = true
+			for _, Obj in self['Objects'] do
 				Obj:Hide()
 			end
 		end
 		return
 	end
 
-	self.Off = false
+	self['Idle'] = false
+	self:Boot()
 	self:Pack()
 
-	local HL = self:Get('Highlights')
+	local F = self['F']
+	local HL = F['Highlights']
+	local Team = F['Team_Check'] and Local.Team
 	local Menu = getgenv().Library
-	local MenuOpen = Menu and Menu.Window and Menu.Window.Open
+	local Shut = Menu and Menu.Window and Menu.Window.Open
 
-	for Plr, Obj in self.Objects do
-		local Data = self:Data(Plr)
+	for Plr, Obj in self['Objects'] do
+		local Data
+		if Team and Plr.Team == Team then
+			Obj:Hide()
+			continue
+		end
+
+		Data = self:Data(Obj)
+
 		if Data then
 			Obj:Render(self, Data)
-			if MenuOpen then
-				Obj.Parts.Skel:Hide()
-				Obj.Parts.Look:Hide()
-				Obj.Parts.Trace:Hide()
+			if Shut then
+				Obj['Skel']:Hide()
+				Obj['Look']:Hide()
+				Obj['Trace']:Hide()
 			end
 		else
-			Set(Obj.Root, 'Visible', false)
-			Obj.Parts.Skel:Hide()
-			Obj.Parts.Head:Hide()
-			Obj.Parts.Trace:Hide()
-			Obj.Parts.Look:Hide()
-			Obj.Parts.HL:Draw(self, HL, Plr.Character)
+			if Obj['Ready'] and Obj['Vis'] then
+				Obj['Vis'] = false
+				Obj['Root'].Visible = false
+			end
+
+			Obj['Skel']:Hide()
+			Obj['Head']:Hide()
+			Obj['Trace']:Hide()
+			Obj['Look']:Hide()
+			Obj['HL']:Draw(self, HL, Obj['Char'], Obj['Hum'])
 		end
 	end
 end
 
-function ESP:Init(ExtFlags)
-	if self.Active then
-		return self
+function ESP:Add(Plr)
+	if Plr == Local or self['Objects'][Plr] then
+		return
+	end
+	self['Objects'][Plr] = ESP.Object:New(Plr)
+end
+
+function ESP:Rem(Plr)
+	local Obj = self['Objects'][Plr]
+	if not Obj then
+		return
+	end
+	Obj:Kill()
+	self['Objects'][Plr] = nil
+end
+
+function ESP:Boot()
+	if self['Gui'] then
+		return
 	end
 
-	self.Active = true
-	self.ExtFlags = ExtFlags
-
-	self.Gui = Inst('ScreenGui', {
+	self['Gui'] = Inst('ScreenGui', {
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1952,23 +2325,39 @@ function ESP:Init(ExtFlags)
 		Parent = Hui,
 	})
 
-	self.Temp, self.TempRefs = self:Build()
-	self.Temp.Visible = false
-	self.Temp.Parent = self.Gui
+	self['Temp'], self['TempRefs'] = self:Build()
+	self['Temp'].Visible = false
+	self['Temp'].Parent = self['Gui']
+end
+
+function ESP:Init(ExtFlags)
+	if ExtFlags then
+		self['ExtFlags'] = ExtFlags
+	end
+
+	if self['Active'] then
+		return self
+	end
+
+	self['Active'] = true
+	self['FCfg'] = {}
+	self['HeadCfg'] = {}
+	self['HCfg'] = { Colors = {}, Stops = { 0, 0.4, 0.7, 1 }, Stamp = 0 }
+	self['ACfg'] = { Colors = {}, Stamp = 0 }
 
 	for _, Plr in Players:GetPlayers() do
 		self:Add(Plr)
 	end
 
-	table.insert(self.Conns, Players.PlayerAdded:Connect(function(Plr)
+	table.insert(self['Conns'], Players.PlayerAdded:Connect(function(Plr)
 		self:Add(Plr)
 	end))
 
-	table.insert(self.Conns, Players.PlayerRemoving:Connect(function(Plr)
+	table.insert(self['Conns'], Players.PlayerRemoving:Connect(function(Plr)
 		self:Rem(Plr)
 	end))
 
-	table.insert(self.Conns, Run.Heartbeat:Connect(function()
+	table.insert(self['Conns'], Run.Heartbeat:Connect(function()
 		self:Step()
 	end))
 
@@ -1976,21 +2365,24 @@ function ESP:Init(ExtFlags)
 end
 
 function ESP:Unload()
-	for I = #self.Conns, 1, -1 do
-		self.Conns[I]:Disconnect()
-		self.Conns[I] = nil
+	for I = #self['Conns'], 1, -1 do
+		self['Conns'][I]:Disconnect()
+		self['Conns'][I] = nil
 	end
 
-	for Plr in self.Objects do
+	for Plr in self['Objects'] do
 		self:Rem(Plr)
 	end
 
-	if self.Gui then
-		self.Gui:Destroy()
-		self.Gui = nil
+	if self['Gui'] then
+		self['Gui']:Destroy()
+		self['Gui'] = nil
+		self['Temp'] = nil
+		self['TempRefs'] = nil
 	end
 
-	self.Active = false
+	table.clear(self['F'])
+	self['Active'] = false
 end
 
 ESP:Init()
