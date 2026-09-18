@@ -71,10 +71,13 @@ local function HookTarget(self, Target, Handler)
             return CallRoot(Unpack(Args))
         end
 
-        local Success, Value, Force = pcall(Handler, Args.n, CallRoot, Unpack(Args))
+        local Rets = table.pack(pcall(Handler, Args.n, CallRoot, Unpack(Args)))
 
-        if Success and Force then
-            return Value
+        if Rets[1] and Rets[3] then
+            if Rets.n == 3 then
+                return Rets[2]
+            end
+            return Rets[2], Unpack(Rets, 4, Rets.n)
         end
 
         return CallRoot(Unpack(Args))
@@ -144,10 +147,13 @@ function HookLibrary:Hook(Name, Handler)
             return CallRoot(Unpack(Args))
         end
 
-        local Success, Value, Force = pcall(Handler, Args.n, CallRoot, Unpack(Args))
+        local Rets = table.pack(pcall(Handler, Args.n, CallRoot, Unpack(Args)))
 
-        if Success and Force then
-            return Value
+        if Rets[1] and Rets[3] then
+            if Rets.n == 3 then
+                return Rets[2]
+            end
+            return Rets[2], Unpack(Rets, 4, Rets.n)
         end
 
         return CallRoot(Unpack(Args))
@@ -184,6 +190,13 @@ function HookLibrary:Hook(Name, Handler)
     }
 
     return true
+end
+
+function HookLibrary:HookFunction(Target, Handler)
+    if type(Target) ~= 'function' then
+        return false
+    end
+    return self:Hook(Target, Handler)
 end
 
 function HookLibrary:IsHooked(Name)
@@ -230,6 +243,13 @@ function HookLibrary:Unhook(Name)
     self.Hooks[Name] = nil
 
     return true
+end
+
+function HookLibrary:UnhookFunction(Target)
+    if type(Target) ~= 'function' then
+        return false
+    end
+    return self:Unhook(Target)
 end
 
 function HookLibrary:ClearHooks()
