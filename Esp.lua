@@ -1383,6 +1383,12 @@ end
 
 function ESP.Bar:Draw(On, Pct, Val, Cfg)
 	Set(self['Back'], 'Visible', On)
+
+	local Wrapper = self['Back'].Parent
+	if Wrapper and Wrapper.Name == 'BarHolder' then
+		Set(Wrapper, 'Visible', On)
+	end
+
 	if not On then
 		return
 	end
