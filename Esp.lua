@@ -120,7 +120,7 @@ local ESP = {
 		['Highlight_Fill'] = Rgb(255, 255, 255),
 		['Highlight_Fill_Transparency'] = 0.5,
 		['Highlight_Outline'] = true,
-		['Highlight_Outline_Color'] = Rgb(0, 0, 0),
+		['Highlight_Outline_Color'] = Rgb(255, 255, 255),
 		['Highlight_Outline_Transparency'] = 0,
 		['Highlight_Depth'] = 'AlwaysOnTop',
 		['Tracers'] = false,
@@ -788,16 +788,17 @@ function ESP:Build()
 		Parent = Holder,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Position = Pos(0, -1, 1, 1),
-		Size = Pos(1, 2, 0, 1),
+		Position = Pos(0, -1, 1, 3),
+		Size = Pos(1, 2, 0, 0),
 	})
 
 	local TitleHolder2 = Inst('Frame', {
 		Name = 'TitleHolder',
 		Parent = Down,
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Position = Pos(0, 2, 0, 0),
-		Size = Pos(1, -4, 0, 25),
+		Size = Pos(1, -4, 0, 0),
 	})
 
 	Inst('UIListLayout', {
@@ -806,17 +807,12 @@ function ESP:Build()
 		Padding = UDim.new(0, 3),
 	})
 
-	Inst('UIPadding', {
-		Parent = TitleHolder2,
-		PaddingTop = UDim.new(0, 3),
-	})
-
 	local DistanceText = Inst('TextLabel', {
 		Name = 'DistanceText',
 		Parent = TitleHolder2,
 		BackgroundTransparency = 1,
 		LayoutOrder = 1,
-		Size = Pos(1, 0, 0, 10),
+		Size = Pos(1, 0, 0, 12),
 		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
@@ -825,18 +821,12 @@ function ESP:Build()
 	})
 	Stroke(DistanceText)
 
-	Inst('UIPadding', {
-		Parent = DistanceText,
-		PaddingBottom = UDim.new(0, 11),
-	})
-
 	local WeaponText = Inst('TextLabel', {
 		Name = 'WeaponText',
 		Parent = TitleHolder2,
 		BackgroundTransparency = 1,
 		LayoutOrder = 2,
-		Position = Pos(0, 0, 0, -1),
-		Size = Pos(1, 0, 0, 10),
+		Size = Pos(1, 0, 0, 12),
 		FontFace = ESP['Font'],
 		Text = '',
 		TextColor3 = Rgb(255, 255, 255),
@@ -845,16 +835,12 @@ function ESP:Build()
 	})
 	Stroke(WeaponText)
 
-	Inst('UIPadding', {
-		Parent = WeaponText,
-		PaddingBottom = UDim.new(0, 11),
-	})
-
 	local BarHolder2 = Inst('Frame', {
 		Name = 'BarHolder',
 		Parent = TitleHolder2,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
+		LayoutOrder = 100,
 		Size = Pos(1, 0, 0, 0),
 	})
 
@@ -902,11 +888,6 @@ function ESP:Build()
 		TextYAlignment = Enum.TextYAlignment.Top,
 	})
 	Stroke(ArmorText)
-
-	Inst('UIPadding', {
-		Parent = BarHolder2,
-		PaddingBottom = UDim.new(0, -2),
-	})
 
 	local Inline = Inst('UIStroke', {
 		Name = 'BoundInline',
@@ -1063,6 +1044,33 @@ function Base:Kill()
 	table.clear(self['Items'])
 end
 
+function ESP:BuildBox(Parent, InlineColor, OutlineColor)
+	local Frame = Inst('Frame', {
+		Parent = Parent,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+	})
+	local Inline = Inst('UIStroke', {
+		Parent = Frame,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		BorderOffset = UDim.new(0, -1),
+		BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		Color = InlineColor or Rgb(255, 255, 255),
+		LineJoinMode = Enum.LineJoinMode.Miter,
+		Thickness = 1,
+	})
+	local Outline = Inst('UIStroke', {
+		Parent = Frame,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		Color = OutlineColor or Rgb(0, 0, 0),
+		LineJoinMode = Enum.LineJoinMode.Miter,
+		Thickness = 3,
+		ZIndex = 0,
+	})
+	return Frame, Inline, Outline
+end
+
 ESP.Box = setmetatable({}, { __index = Base })
 ESP.Box.__index = ESP.Box
 
@@ -1137,7 +1145,7 @@ function ESP.Circ:New(Gui)
 	Self['Stroke'] = Inst('UIStroke', {
 		Parent = Root,
 		Color = Rgb(255, 255, 255),
-		Thickness = 1.1,
+		Thickness = 1,
 	})
 
 	Self['Inner'] = Inst('Frame', {
