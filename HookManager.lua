@@ -65,13 +65,12 @@ local function HookTarget(self, Target, Handler)
 
     local function RawClosure(...)
         local Hook = self.Hooks[Target]
-        local Args = table.pack(...)
 
         if not Hook or not Hook.Enabled then
-            return CallRoot(Unpack(Args))
+            return CallRoot(...)
         end
 
-        local Rets = table.pack(pcall(Handler, Args.n, CallRoot, Unpack(Args)))
+        local Rets = table.pack(pcall(Handler, select('#', ...), CallRoot, ...))
 
         if Rets[1] and Rets[3] then
             if Rets.n == 3 then
@@ -80,7 +79,7 @@ local function HookTarget(self, Target, Handler)
             return Rets[2], Unpack(Rets, 4, Rets.n)
         end
 
-        return CallRoot(Unpack(Args))
+        return CallRoot(...)
     end
 
     local HookedClosure = newcclosure(RawClosure)
@@ -141,13 +140,12 @@ function HookLibrary:Hook(Name, Handler)
 
     local function RawClosure(...)
         local Hook = self.Hooks[Name]
-        local Args = table.pack(...)
 
         if not Hook or not Hook.Enabled then
-            return CallRoot(Unpack(Args))
+            return CallRoot(...)
         end
 
-        local Rets = table.pack(pcall(Handler, Args.n, CallRoot, Unpack(Args)))
+        local Rets = table.pack(pcall(Handler, select('#', ...), CallRoot, ...))
 
         if Rets[1] and Rets[3] then
             if Rets.n == 3 then
@@ -156,7 +154,7 @@ function HookLibrary:Hook(Name, Handler)
             return Rets[2], Unpack(Rets, 4, Rets.n)
         end
 
-        return CallRoot(Unpack(Args))
+        return CallRoot(...)
     end
 
     local HookedClosure = newcclosure(RawClosure)
