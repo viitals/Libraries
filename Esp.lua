@@ -63,8 +63,6 @@ local ESP = {
 	Conns = {},
 	F = {},
 	Saved = {},
-	Tint = nil,
-	TintKeys = nil,
 	Font = Font.fromEnum(Enum.Font.SpecialElite),
 	Size = 12,
 	Height = 6,
@@ -194,22 +192,6 @@ local FlagOrder = {
 }
 
 local FlagHold = 0.1
-
-local TintKeys = {
-	'Box_Color',
-	'Name_Color',
-	'Distance_Color',
-	'Weapon_Color',
-	'Flag_Color',
-	'Fill_Color',
-	'Head_Color',
-	'Head_Fill_Color',
-	'Health_Text_Color',
-	'Skeleton_Color',
-	'Highlight_Fill',
-	'Tracer_Color',
-	'Look_Color',
-}
 
 -- // Finobe's skeleton system | https://github.com/i77lhm
 local Bones = {
@@ -1410,11 +1392,7 @@ end
 
 function ESP.Bar:Draw(On, Pct, Val, Cfg)
 	Set(self['Back'], 'Visible', On)
-
-	local Wrapper = self['Back'].Parent
-	if Wrapper and Wrapper.Name == 'BarHolder' then
-		Set(Wrapper, 'Visible', On)
-	end
+	Set(self['Back'].Parent, 'Visible', On)
 
 	if not On then
 		return
@@ -2023,7 +2001,7 @@ function ESP.Object:Hide()
 	self['Look']:Hide()
 end
 
-function ESP.Object:Paint(Esp, Data)
+function ESP.Object:Render(Esp, Data)
 	self:Boot(Esp)
 
 	local F = Esp['F']
@@ -2055,12 +2033,6 @@ function ESP.Object:Paint(Esp, Data)
 	self['Health']:Draw(F['Healthbar'], Data['Health'], Data['HealthVal'], Esp['HCfg'])
 	self['Armor']:Draw(F['Armorbar'], 1, 100, Esp['ACfg'])
 	self['Flag']:Draw(Esp, F['EspFlags'], Data)
-end
-
-function ESP.Object:Render(Esp, Data)
-	self:Paint(Esp, Data)
-
-	local F = Esp['F']
 	self['Skel']:Draw(Esp, F['Skeletons'], Data)
 	self['HL']:Draw(Esp, F['Highlights'], Data['Char'], self['Hum'])
 	self['Head']:Draw(Esp, F['Head'], Data)
@@ -2286,18 +2258,18 @@ function ESP:Resolve()
 	self['HCfg']['TextCol'] = F['Health_Text_Color'] or F['Health_High'] or Rgb(0, 255, 80)
 end
 
-function ESP:Recolor(Col, Keys, Saved)
-	local F = self['F']
-	for _, Key in Keys do
+function ESP:Recolor(Col)
+	local F, Saved = self['F'], self['Saved']
+	for _, Key in self['TintKeys'] do
 		Saved[Key] = F[Key]
 		F[Key] = Col
 	end
 	self:Resolve()
 end
 
-function ESP:Restore(Keys, Saved)
-	local F = self['F']
-	for _, Key in Keys do
+function ESP:Restore()
+	local F, Saved = self['F'], self['Saved']
+	for _, Key in self['TintKeys'] do
 		F[Key] = Saved[Key]
 		Saved[Key] = nil
 	end
@@ -2330,8 +2302,7 @@ function ESP:Step()
 	local Menu = getgenv().Library
 	local Shut = Menu and Menu.Window and Menu.Window.Open
 	local Tint = self['Tint']
-	local Keys = self['TintKeys'] or TintKeys
-	local Saved = self['Saved']
+	local Keys = self['TintKeys']
 
 	for Plr, Obj in self['Objects'] do
 		local Data
@@ -2340,16 +2311,14 @@ function ESP:Step()
 			continue
 		end
 
-		local Col
-		if Tint then
-			Col = Tint(Plr)
-			if Col == false then
-				Obj:Hide()
-				continue
-			end
-			if Col then
-				self:Recolor(Col, Keys, Saved)
-			end
+		local Col = Tint and Tint(Plr)
+		if Col == false then
+			Obj:Hide()
+			continue
+		end
+		Col = Keys and Col
+		if Col then
+			self:Recolor(Col)
 		end
 
 		Data = self:Data(Obj)
@@ -2375,7 +2344,7 @@ function ESP:Step()
 		end
 
 		if Col then
-			self:Restore(Keys, Saved)
+			self:Restore()
 		end
 	end
 end
@@ -2394,23 +2363,6 @@ function ESP:Rem(Plr)
 	end
 	Obj:Kill()
 	self['Objects'][Plr] = nil
-end
-
-function ESP:Mirror(Parent, Plr)
-	self:Boot()
-	local Obj = ESP.Object:New(Plr)
-	Obj:Boot(self)
-	Obj['Root'].Parent = Parent
-	return Obj
-end
-
-function ESP:Preview(Obj, Data)
-	if not Data or not self['Active'] or not self:Raw('Enabled') then
-		return Obj:Hide()
-	end
-	self:Boot()
-	self:Pack()
-	Obj:Paint(self, Data)
 end
 
 function ESP:Boot()
