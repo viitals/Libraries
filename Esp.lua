@@ -63,7 +63,7 @@ local ESP = {
 	Conns = {},
 	F = {},
 	Saved = {},
-	Font = Font.fromEnum(Enum.Font.SpecialElite),
+	Font = Font.new('rbxasset://fonts/families/fs Tahoma Bold 8px.json'),
 	Size = 12,
 	Height = 6,
 	Width = 4,
@@ -189,30 +189,83 @@ local function JointPos(Part, Node)
 end
 
 -- // Font
-local function RegFont(Name, Id, Url)
-	if not isfile(Id) then
-		writefile(Id, game:HttpGet(Url))
+local function SnapAdvances(Data)
+	local function ReadU16(At)
+		local High, Low = string.byte(Data, At + 1, At + 2)
+		return High * 256 + Low
 	end
 
-	local Path = Name .. '.font'
-	writefile(Path, Http:JSONEncode({
-		name = Name,
+	if #Data < 12 or string.sub(Data, 1, 4) ~= '\0\1\0\0' then
+		return Data
+	end
+
+	local Tables = {}
+	for Index = 0, ReadU16(4) - 1 do
+		local Entry = 12 + Index * 16
+		Tables[string.sub(Data, Entry + 1, Entry + 4)] = ReadU16(Entry + 8) * 65536 + ReadU16(Entry + 10)
+	end
+
+	local Hhea, Hmtx = Tables['hhea'], Tables['hmtx']
+	if not Hhea or not Hmtx then
+		return Data
+	end
+
+	local Pieces, Copied = {}, 0
+	for Glyph = 0, ReadU16(Hhea + 34) - 1 do
+		local At = Hmtx + Glyph * 4
+		local Advance = ReadU16(At)
+		local Snapped = Floor(Advance / 64 + 0.5) * 64
+
+		if Snapped ~= Advance then
+			table.insert(Pieces, string.sub(Data, Copied + 1, At))
+			table.insert(Pieces, string.char(Floor(Snapped / 256), Snapped % 256))
+			Copied = At + 2
+		end
+	end
+	table.insert(Pieces, string.sub(Data, Copied + 1))
+
+	return table.concat(Pieces)
+end
+
+local function LoadFont()
+	local Shared = getgenv().CustomFontUrl
+	if Shared then
+		return Font.new(Shared)
+	end
+
+	local Folder = 'Prefire/Fonts'
+	local SourcePath = Folder .. '/fs Tahoma Bold 8px.ttf'
+	local TtfPath = Folder .. '/fs Tahoma Bold 8px Snapped.ttf'
+	local JsonPath = Folder .. '/fs Tahoma Bold 8px Snapped.json'
+
+	for _, Path in { 'Prefire', Folder } do
+		if not isfolder(Path) then
+			makefolder(Path)
+		end
+	end
+
+	if not isfile(TtfPath) then
+		local Source = isfile(SourcePath) and readfile(SourcePath)
+			or game:HttpGet('https://raw.githubusercontent.com/viitals/Fonts/main/fs%20Tahoma%208px%20Regular.ttf')
+		writefile(SourcePath, Source)
+		writefile(TtfPath, SnapAdvances(Source))
+	end
+
+	writefile(JsonPath, Http:JSONEncode({
+		name = 'fs Tahoma Bold 8px',
 		faces = {
-			{ name = 'Normal', weight = 400, style = 'Normal', assetId = getcustomasset(Id) },
+			{ name = 'Regular', weight = 400, style = 'normal', assetId = getcustomasset(TtfPath) },
 		},
 	}))
 
-	return Font.new(getcustomasset(Path), Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	local Url = getcustomasset(JsonPath)
+	getgenv().CustomFontUrl = Url
+	return Font.new(Url)
 end
 
-local Ok, Tempesta = pcall(RegFont,
-	'PF Tempesta Seven',
-	'PFTempestaSeven.ttf',
-	'https://raw.githubusercontent.com/viitals/Fonts/main/PF%20Tempesta%20Seven.ttf'
-)
-
+local Ok, Tahoma = pcall(LoadFont)
 if Ok then
-	ESP['Font'] = Tempesta
+	ESP['Font'] = Tahoma
 end
 
 -- // Helpers
