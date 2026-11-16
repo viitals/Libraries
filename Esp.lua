@@ -2271,7 +2271,7 @@ function Preview:Data(Obj)
 	if Animated then
 		local Pct = Abs(self['Now'] % 2 - 1)
 		Data['Health'] = Pct
-		Data['HealthVal'] = Floor(Pct * 100 + 0.5)
+		Data['HealthVal'] = Floor(Pct * 100)
 	end
 
 	if not self['F']['EspFlags'] then
