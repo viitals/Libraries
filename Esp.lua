@@ -65,7 +65,6 @@ local ESP = {
 	F = {},
 	Saved = {},
 	Font = Font.new('rbxasset://fonts/families/fs Tahoma Bold 8px.json'),
-	Size = 12,
 
 	Flags = {
 		['Enabled'] = false, ['Team_Check'] = false, ['Max_Distance'] = 0,
@@ -648,8 +647,8 @@ function ESP:NameStr(Data)
 end
 
 function ESP:Wts(World)
-	local V, On = Cam:WorldToViewportPoint(World)
-	return Vec(V.X, V.Y), On, V.Z
+	local X, Y, On, Depth = self:Project(World)
+	return Vec(X, Y), On, Depth
 end
 
 function ESP:View()
@@ -1026,7 +1025,7 @@ ESP.Box = Class()
 
 function ESP.Box:Draw(Esp, On, Data)
 	local Refs, F = self['Refs'], Esp['F']
-	local Is2D = On and (F['Box_Type'] or '2D') == '2D'
+	local Is2D = On and F['Box_Type'] == '2D'
 
 	Set(Refs['Inline'], 'Enabled', Is2D)
 	Set(Refs['Outline'], 'Enabled', Is2D)
@@ -1505,11 +1504,11 @@ function ESP.HL:Draw(Esp, On, Char, Hum)
 	end
 
 	local F, Obj = Esp['F'], self['Inst']
-	local OutTrans = F['Highlight_Outline'] and (F['Highlight_Outline_Transparency'] or 0) or 1
+	local OutTrans = F['Highlight_Outline'] and F['Highlight_Outline_Transparency'] or 1
 
 	Update(self, 'Char', Obj, 'Adornee', Char)
 	Update(self, 'Fill', Obj, 'FillColor', F['Highlight_Fill'])
-	Update(self, 'Trans', Obj, 'FillTransparency', F['Highlight_Fill_Transparency'] or 0.5)
+	Update(self, 'Trans', Obj, 'FillTransparency', F['Highlight_Fill_Transparency'])
 	Update(self, 'OutCol', Obj, 'OutlineColor', F['Highlight_Outline_Color'])
 	Update(self, 'OutTrans', Obj, 'OutlineTransparency', OutTrans)
 	Update(self, 'Depth', Obj, 'DepthMode', DepthMode[F['Highlight_Depth']] or DepthMode['AlwaysOnTop'])
@@ -1556,7 +1555,7 @@ function ESP.Look:Draw(Esp, On, Data)
 
 	local F, CF = Esp['F'], Head.CFrame
 	local X1, Y1, OnA = Esp:Project(CF.Position)
-	local X2, Y2, OnB = Esp:Project(CF.Position + CF.LookVector * (F['Look_Length'] or 3))
+	local X2, Y2, OnB = Esp:Project(CF.Position + CF.LookVector * F['Look_Length'])
 
 	if not OnA and not OnB then
 		self:Hide()
@@ -1882,31 +1881,29 @@ function ESP:Pack()
 	end
 
 	local Fill = self['FCfg']
-	local Type = F['Fill_Type'] or 'Full'
+	local Type = F['Fill_Type']
 	local Rot = F['Fill_Rotation']
 	if not Rot and Type ~= 'Full' then
-		Rot = FillRot[F['Fill_Half'] or 'Top'] or FillRot['Top']
+		Rot = FillRot[F['Fill_Half']] or FillRot['Top']
 	end
 
-	Fill['Trans'] = F['Fill_Transparency'] or 0.5
+	Fill['Trans'] = F['Fill_Transparency']
 	Fill['Static'] = F['Fill_Static']
 	Fill['Type'] = Type
 	Fill['Spin'] = F['Fill_Spin']
-	Fill['Rot'] = Fill['Spin'] and Floor(self['Now'] * (F['Fill_Spin_Speed'] or 60)) % 360 or Rot or FillRot['Bottom']
+	Fill['Rot'] = Fill['Spin'] and Floor(self['Now'] * F['Fill_Spin_Speed']) % 360 or Rot or FillRot['Bottom']
 
 	local Head = self['HeadCfg']
-	Head['Trans'] = F['Head_Fill_Transparency'] or 0.5
+	Head['Trans'] = F['Head_Fill_Transparency']
 	Head['Static'] = F['Head_Fill_Static']
-	Head['Type'] = F['Head_Fill_Type'] or 'Full'
+	Head['Type'] = F['Head_Fill_Type']
 	Head['Fill'] = F['Head_Fill']
 	Head['Outline'] = F['Head_Outline']
 	Head['OutlineColor'] = F['Head_Outline_Color']
-	Head['Rot'] = F['Head_Spin'] and Floor(self['Now'] * (F['Head_Spin_Speed'] or 60)) % 360 or FillRot['Bottom']
+	Head['Rot'] = F['Head_Spin'] and Floor(self['Now'] * F['Head_Spin_Speed']) % 360 or FillRot['Bottom']
 
 	local Health = self['HCfg']
-	local High = F['Health_High'] or Rgb(0, 255, 80)
-	local Mid = F['Health_Mid'] or Rgb(255, 230, 0)
-	local Low = F['Health_Low'] or Rgb(255, 40, 40)
+	local High, Mid, Low = F['Health_High'], F['Health_Mid'], F['Health_Low']
 	local Cols = Health['Colors']
 
 	if Cols[1] ~= High or Cols[2] ~= Mid or Cols[4] ~= Low then
@@ -1918,7 +1915,7 @@ function ESP:Pack()
 	Health['Dynamic'] = F['Health_Text_Dynamic']
 
 	local Armor = self['ACfg']
-	local ArmorCol = F['Armor_Color'] or Rgb(0, 85, 255)
+	local ArmorCol = F['Armor_Color']
 	if Armor['Colors'][1] ~= ArmorCol then
 		Armor['Colors'][1], Armor['Colors'][2] = ArmorCol, ArmorCol
 		Armor['Stamp'] += 1
@@ -1932,26 +1929,20 @@ end
 
 function ESP:Resolve()
 	local F, Head = self['F'], self['HeadCfg']
-	self['FCfg']['Col'] = F['Fill_Color'] or White
-	Head['Col'] = F['Head_Fill_Color'] or Rgb(255, 0, 75)
+	self['FCfg']['Col'] = F['Fill_Color']
+	Head['Col'] = F['Head_Fill_Color']
 	Head['Stroke'] = F['Head_Color']
-	self['HCfg']['TextCol'] = F['Health_Text_Color'] or F['Health_High'] or Rgb(0, 255, 80)
+	self['HCfg']['TextCol'] = F['Health_Text_Color']
 end
 
 function ESP:Recolor(Col)
 	local F, Saved = self['F'], self['Saved']
 	for _, Key in self['TintKeys'] do
-		Saved[Key] = F[Key]
-		F[Key] = Col
-	end
-	self:Resolve()
-end
-
-function ESP:Restore()
-	local F, Saved = self['F'], self['Saved']
-	for _, Key in self['TintKeys'] do
-		F[Key] = Saved[Key]
-		Saved[Key] = nil
+		if Col then
+			Saved[Key], F[Key] = F[Key], Col
+		else
+			F[Key], Saved[Key] = Saved[Key], nil
+		end
 	end
 	self:Resolve()
 end
@@ -2016,7 +2007,7 @@ function ESP:Step()
 		end
 
 		if Col then
-			self:Restore()
+			self:Recolor()
 		end
 	end
 end
@@ -2140,8 +2131,8 @@ function Chams:Draw(Esp, On, Char)
 	end
 
 	local F = Esp['F']
-	local Fill = F['Highlight_Fill'] or White
-	local Mix = 1 - (F['Highlight_Fill_Transparency'] or 0.5)
+	local Fill = F['Highlight_Fill']
+	local Mix = 1 - F['Highlight_Fill_Transparency']
 	if self['Char'] == Char and self['Fill'] == Fill and self['Mix'] == Mix then
 		return
 	end
@@ -2198,11 +2189,6 @@ function Preview:Project(World)
 	local X = Vp.X * 0.5 + Rel.X / Depth * self['Px']
 	local Y = Vp.Y * 0.5 - Rel.Y / Depth * self['Px']
 	return X, Y, Depth > 0 and X >= 0 and Y >= 0 and X <= Vp.X and Y <= Vp.Y, Depth
-end
-
-function Preview:Wts(World)
-	local X, Y, On, Depth = self:Project(World)
-	return Vec(X, Y), On, Depth
 end
 
 function Preview:Data(Obj)
