@@ -1,17 +1,21 @@
+local GetGenv, CloneRef, GetHui = getgenv, cloneref, gethui
+local IsFile, IsFolder, MakeFolder = isfile, isfolder, makefolder
+local ReadFile, WriteFile, GetCustomAsset = readfile, writefile, getcustomasset
+
 local Cache = {}
-local Services = getgenv().Services
+local Services = GetGenv().Services
 
 -- // Samet's cloneref service cacher | https://github.com/sametexe001
 if not Services then
 	Services = setmetatable({}, {
 		__index = function(_, Name)
 			if not Cache[Name] then
-				Cache[Name] = cloneref(game:GetService(Name))
+				Cache[Name] = CloneRef(game:GetService(Name))
 			end
 			return Cache[Name]
 		end,
 	})
-	getgenv().Services = Services
+	GetGenv().Services = Services
 end
 
 local Run = Services['RunService']
@@ -22,10 +26,10 @@ local Workspace = Services['Workspace']
 local Input = Services['UserInputService']
 
 local Hui = CoreGui
-if gethui then
-	local Ok, Result = pcall(gethui)
+if GetHui then
+	local Ok, Result = pcall(GetHui)
 	if Ok and Result then
-		Hui = cloneref(Result)
+		Hui = CloneRef(Result)
 	end
 end
 
@@ -67,27 +71,27 @@ local ESP = {
 	Font = Font.new('rbxasset://fonts/families/fs Tahoma Bold 8px.json'),
 
 	Flags = {
-		['Enabled'] = false, ['Team_Check'] = false, ['Max_Distance'] = 0,
-		['Names'] = false, ['Name_Type'] = 'Both', ['Name_Color'] = White,
-		['Boxes'] = false, ['Box_Type'] = '2D', ['Box_Dynamic'] = false, ['Box_Color'] = White,
-		['Fill'] = false, ['Fill_Color'] = White, ['Fill_Type'] = 'Full', ['Fill_Half'] = 'Top', ['Fill_Static'] = false,
-		['Fill_Rotation'] = false, ['Fill_Transparency'] = 0.5, ['Fill_Spin'] = false, ['Fill_Spin_Speed'] = 60,
-		['Head'] = false, ['Head_Color'] = White, ['Head_Fill'] = false, ['Head_Fill_Color'] = Rgb(255, 0, 75), ['Head_Fill_Type'] = 'Full',
-		['Head_Fill_Static'] = false, ['Head_Fill_Transparency'] = 0.5, ['Head_Spin'] = false, ['Head_Spin_Speed'] = 60,
-		['Head_Outline'] = true, ['Head_Outline_Color'] = Black,
-		['Healthbar'] = false, ['Health_Text'] = false, ['Health_Text_Dynamic'] = false, ['Health_Text_Color'] = Rgb(0, 255, 80),
-		['Health_High'] = Rgb(0, 255, 80), ['Health_Mid'] = Rgb(255, 230, 0), ['Health_Low'] = Rgb(255, 40, 40),
-		['Armorbar'] = false, ['Armor_Text'] = false, ['Armor_Color'] = Rgb(0, 85, 255),
-		['Distance'] = false, ['Distance_Color'] = White,
-		['Weapon'] = false, ['Weapon_Color'] = White,
-		['EspFlags'] = false, ['Flag_Color'] = White,
-		['Skeletons'] = false, ['Skeleton_Color'] = White, ['Skeleton_Outline'] = true, ['Skeleton_Outline_Color'] = Black,
-		['Highlights'] = false, ['Highlight_Fill'] = White, ['Highlight_Fill_Transparency'] = 0.5, ['Highlight_Outline'] = true,
-		['Highlight_Outline_Color'] = White, ['Highlight_Outline_Transparency'] = 0, ['Highlight_Depth'] = 'AlwaysOnTop',
-		['Tracers'] = false, ['Tracer_Color'] = White, ['Tracer_Origin'] = 'Bottom', ['Tracer_Thickness'] = 1,
-		['Tracer_Outline'] = true, ['Tracer_Outline_Color'] = Black,
-		['Look'] = false, ['Look_Color'] = White, ['Look_Outline'] = true, ['Look_Outline_Color'] = Black,
-		['Look_Length'] = 3, ['Look_Thickness'] = 1,
+		['Enabled'] = false, ['TeamCheck'] = false, ['MaxDistance'] = 0,
+		['Names'] = false, ['NameType'] = 'Both', ['NameColor'] = White,
+		['Boxes'] = false, ['BoxType'] = '2D', ['BoxDynamic'] = false, ['BoxColor'] = White,
+		['Fill'] = false, ['FillColor'] = White, ['FillType'] = 'Full', ['FillHalf'] = 'Top', ['FillStatic'] = false,
+		['FillRotation'] = false, ['FillTransparency'] = 0.5, ['FillSpin'] = false, ['FillSpinSpeed'] = 60,
+		['Head'] = false, ['HeadColor'] = White, ['HeadFill'] = false, ['HeadFillColor'] = Rgb(255, 0, 75), ['HeadFillType'] = 'Full',
+		['HeadFillStatic'] = false, ['HeadFillTransparency'] = 0.5, ['HeadSpin'] = false, ['HeadSpinSpeed'] = 60,
+		['HeadOutline'] = true, ['HeadOutlineColor'] = Black,
+		['Healthbar'] = false, ['HealthText'] = false, ['HealthTextDynamic'] = false, ['HealthTextColor'] = Rgb(0, 255, 80),
+		['HealthHigh'] = Rgb(0, 255, 80), ['HealthMid'] = Rgb(255, 230, 0), ['HealthLow'] = Rgb(255, 40, 40),
+		['Armorbar'] = false, ['ArmorText'] = false, ['ArmorColor'] = Rgb(0, 85, 255),
+		['Distance'] = false, ['DistanceColor'] = White,
+		['Weapon'] = false, ['WeaponColor'] = White,
+		['EspFlags'] = false, ['FlagColor'] = White,
+		['Skeletons'] = false, ['SkeletonColor'] = White, ['SkeletonOutline'] = true, ['SkeletonOutlineColor'] = Black,
+		['Highlights'] = false, ['HighlightFill'] = White, ['HighlightFillTransparency'] = 0.5, ['HighlightOutline'] = true,
+		['HighlightOutlineColor'] = White, ['HighlightOutlineTransparency'] = 0, ['HighlightDepth'] = 'AlwaysOnTop',
+		['Tracers'] = false, ['TracerColor'] = White, ['TracerOrigin'] = 'Bottom', ['TracerThickness'] = 1,
+		['TracerOutline'] = true, ['TracerOutlineColor'] = Black,
+		['Look'] = false, ['LookColor'] = White, ['LookOutline'] = true, ['LookOutlineColor'] = Black,
+		['LookLength'] = 3, ['LookThickness'] = 1,
 	},
 }
 
@@ -307,7 +311,7 @@ local function SnapAdvances(Data)
 end
 
 local function LoadFont()
-	local Shared = getgenv().CustomFontUrl
+	local Shared = GetGenv().CustomFontUrl
 	if Shared then
 		return Font.new(Shared)
 	end
@@ -318,27 +322,27 @@ local function LoadFont()
 	local JsonPath = Folder .. '/fs Tahoma Bold 8px Snapped.json'
 
 	for _, Path in { 'Prefire', Folder } do
-		if not isfolder(Path) then
-			makefolder(Path)
+		if not IsFolder(Path) then
+			MakeFolder(Path)
 		end
 	end
 
-	if not isfile(TtfPath) then
-		local Source = isfile(SourcePath) and readfile(SourcePath)
+	if not IsFile(TtfPath) then
+		local Source = IsFile(SourcePath) and ReadFile(SourcePath)
 			or game:HttpGet('https://raw.githubusercontent.com/viitals/Fonts/main/fs%20Tahoma%208px%20Regular.ttf')
-		writefile(SourcePath, Source)
-		writefile(TtfPath, SnapAdvances(Source))
+		WriteFile(SourcePath, Source)
+		WriteFile(TtfPath, SnapAdvances(Source))
 	end
 
-	writefile(JsonPath, Http:JSONEncode({
+	WriteFile(JsonPath, Http:JSONEncode({
 		name = 'fs Tahoma Bold 8px',
 		faces = {
-			{ name = 'Regular', weight = 400, style = 'normal', assetId = getcustomasset(TtfPath) },
+			{ name = 'Regular', weight = 400, style = 'normal', assetId = GetCustomAsset(TtfPath) },
 		},
 	}))
 
-	local Url = getcustomasset(JsonPath)
-	getgenv().CustomFontUrl = Url
+	local Url = GetCustomAsset(JsonPath)
+	GetGenv().CustomFontUrl = Url
 	return Font.new(Url)
 end
 
@@ -502,118 +506,51 @@ local function BoxStrokes(Frame, InlineColor, OutlineColor)
 end
 
 -- // Drawing lines
-local StepLimit = 3
-
 local function GuiLine(Parent, Z)
-	local function Piece(Anchor)
-		return Inst('Frame', {
-			Parent = Parent,
-			AnchorPoint = Anchor,
-			BorderSizePixel = 0,
-			Visible = false,
-			ZIndex = 10 + Z,
-		})
-	end
-
-	local Frame = Piece(Vec(0.5, 0.5))
-	local Runs = {}
-	local State = { From = Vec(0, 0), To = Vec(0, 0), Thickness = 1, Visible = false, Used = 0 }
-
-	local function Show()
-		local Visible, Used = State['Visible'], State['Used']
-		Frame.Visible = Visible and Used == 0
-		for I, Run in Runs do
-			Run.Visible = Visible and I <= Used
-		end
-	end
-
-	local function PlaceRun(Index, Steep, Lo, Hi, Across, Thick)
-		local Run = Runs[Index]
-		if not Run then
-			Run = Piece(Vec(0, 0))
-			Run.BackgroundColor3 = Frame.BackgroundColor3
-			Runs[Index] = Run
-		end
-
-		local Half = Floor(Thick / 2)
-		local X, Y, W, H = Across - Half, Lo - Half, Thick, Hi - Lo + 1 + Half * 2
-		if not Steep then
-			X, Y, W, H = Y, X, H, W
-		end
-
-		Run.Position = Off(X, Y)
-		Run.Size = Off(W, H)
-	end
-
-	local function Layout()
-		local A, B, Thick = State['From'], State['To'], State['Thickness']
-		local X1, Y1, X2, Y2 = Floor(A.X), Floor(A.Y), Floor(B.X), Floor(B.Y)
-		local DX, DY = X2 - X1, Y2 - Y1
-		local Steep = Abs(DY) >= Abs(DX)
-		local Major, Minor = DY, DX
-		local Start, Side = Y1, X1
-		if not Steep then
-			Major, Minor, Start, Side = DX, DY, X1, Y1
-		end
-		if Abs(Minor) == 1 then
-			Minor = 0
-		end
-
-		if Abs(Minor) <= StepLimit then
-			local Count, Sign = Abs(Major), Major >= 0 and 1 or -1
-			local Used, RunFrom, RunAcross = 0, 0, nil
-
-			for Step = 0, Count + 1 do
-				local Across = Step <= Count and Floor(Minor * (Count > 0 and Step / Count or 0) + 0.5) or nil
-				if Across ~= RunAcross then
-					if RunAcross then
-						local P1, P2 = Start + Sign * RunFrom, Start + Sign * (Step - 1)
-						Used += 1
-						PlaceRun(Used, Steep, Min(P1, P2), Max(P1, P2), Side + RunAcross, Thick)
-					end
-					RunFrom, RunAcross = Step, Across
-				end
-			end
-
-			State['Used'] = Used
-		else
-			State['Used'] = 0
-
-			local CX1, CY1, CX2, CY2 = X1 + 0.5, Y1 + 0.5, X2 + 0.5, Y2 + 0.5
-			local Length = Floor(math.sqrt(DX * DX + DY * DY) + 0.5) + Thick
-			local CX, CY = (CX1 + CX2) * 0.5, (CY1 + CY2) * 0.5
-			local PX, PY = Floor(CX), Floor(CY)
-
-			Frame.Position = Off(PX, PY)
-			Frame.Size = Off(Length, Thick)
-			Frame.AnchorPoint = Vec(0.5 - (CX - PX) / Length, 0.5 - (CY - PY) / Thick)
-			Frame.Rotation = math.deg(math.atan2(DY, DX))
-		end
-
-		Show()
-	end
+	local Frame = Inst('Frame', {
+		Parent = Parent,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 10 + Z,
+	})
+	local Ends = { From = Vec(0, 0), To = Vec(0, 0), Thickness = 1 }
 
 	return setmetatable({}, {
 		__index = {
 			Remove = function()
 				Frame:Destroy()
-				for _, Run in Runs do
-					Run:Destroy()
-				end
 			end,
 		},
 		__newindex = function(_, Key, Val)
 			if Key == 'Color' then
 				Frame.BackgroundColor3 = Val
-				for _, Run in Runs do
-					Run.BackgroundColor3 = Val
-				end
 			elseif Key == 'Visible' then
-				State['Visible'] = Val
-				Show()
-			elseif State[Key] ~= nil then
-				State[Key] = Val
-				Layout()
+				Frame.Visible = Val
+			elseif Ends[Key] ~= nil then
+				Ends[Key] = Val
+
+				local A, B, Thick = Ends['From'], Ends['To'], Ends['Thickness']
+				local X1, Y1, X2, Y2 = Floor(A.X), Floor(A.Y), Floor(B.X), Floor(B.Y)
+				local DX, DY = X2 - X1, Y2 - Y1
+
+				if Abs(DX) <= 1 or Abs(DY) <= 1 then
+					local Half = Floor(Thick / 2)
+					local Steep = Abs(DY) >= Abs(DX)
+					Frame.AnchorPoint = Vec(0, 0)
+					Frame.Rotation = 0
+					Frame.Position = Steep and Off(X1 - Half, Min(Y1, Y2) - Half) or Off(Min(X1, X2) - Half, Y1 - Half)
+					Frame.Size = Steep and Off(Thick, Abs(DY) + 1 + Half * 2) or Off(Abs(DX) + 1 + Half * 2, Thick)
+					return
+				end
+
+				local Length = Floor(math.sqrt(DX * DX + DY * DY) + 0.5) + Thick
+				local CX, CY = (X1 + X2) * 0.5 + 0.5, (Y1 + Y2) * 0.5 + 0.5
+				local PX, PY = Floor(CX), Floor(CY)
+
+				Frame.Position = Off(PX, PY)
+				Frame.Size = Off(Length, Thick)
+				Frame.AnchorPoint = Vec(0.5 - (CX - PX) / Length, 0.5 - (CY - PY) / Thick)
+				Frame.Rotation = math.deg(math.atan2(DY, DX))
 			end
 		end,
 	})
@@ -713,7 +650,7 @@ function ESP:Raw(Key)
 end
 
 function ESP:NameStr(Data)
-	local Mode = self['F']['Name_Type']
+	local Mode = self['F']['NameType']
 	if Mode == 'Display' then
 		return Data['Display']
 	elseif Mode == 'Username' then
@@ -1093,7 +1030,7 @@ ESP.Box = Class()
 
 function ESP.Box:Draw(Esp, On, Data)
 	local Refs, F = self['Refs'], Esp['F']
-	local Is2D = On and F['Box_Type'] == '2D'
+	local Is2D = On and F['BoxType'] == '2D'
 
 	Set(Refs['Inline'], 'Enabled', Is2D)
 	Set(Refs['Outline'], 'Enabled', Is2D)
@@ -1109,11 +1046,11 @@ function ESP.Box:Draw(Esp, On, Data)
 		end
 	end
 
-	if not On or self['Col'] == F['Box_Color'] then
+	if not On or self['Col'] == F['BoxColor'] then
 		return
 	end
 
-	local Col = F['Box_Color']
+	local Col = F['BoxColor']
 	self['Col'] = Col
 	Refs['Inline'].Color = Col
 	for _, Edge in Refs['Edges'] do
@@ -1156,14 +1093,14 @@ function ESP.Text:Draw(Esp, Data)
 	local NameLabel = Refs['NameText']
 	Set(NameLabel, 'Visible', F['Names'])
 	if F['Names'] then
-		Update(self, 'NameCol', NameLabel, 'TextColor3', F['Name_Color'])
+		Update(self, 'NameCol', NameLabel, 'TextColor3', F['NameColor'])
 		Update(self, 'NameStr', NameLabel, 'Text', Esp:NameStr(Data))
 	end
 
 	local DistLabel = Refs['DistanceText']
 	Set(DistLabel, 'Visible', F['Distance'])
 	if F['Distance'] then
-		Update(self, 'DistCol', DistLabel, 'TextColor3', F['Distance_Color'])
+		Update(self, 'DistCol', DistLabel, 'TextColor3', F['DistanceColor'])
 		if self['Dist'] ~= Data['Dist'] then
 			self['Dist'] = Data['Dist']
 			DistLabel.Text = Data['Dist'] .. ' st'
@@ -1175,7 +1112,7 @@ function ESP.Text:Draw(Esp, Data)
 	local WeaponLabel = Refs['WeaponText']
 	Set(WeaponLabel, 'Visible', WeaponOn)
 	if WeaponOn then
-		Update(self, 'WeaponCol', WeaponLabel, 'TextColor3', F['Weapon_Color'])
+		Update(self, 'WeaponCol', WeaponLabel, 'TextColor3', F['WeaponColor'])
 		Update(self, 'Tool', WeaponLabel, 'Text', Tool)
 	end
 end
@@ -1432,7 +1369,7 @@ function ESP.Flag:Draw(Esp, On, Data)
 		return
 	end
 
-	local Col = Esp['F']['Flag_Color']
+	local Col = Esp['F']['FlagColor']
 	local Now = Esp['Now']
 	local Hold = self['Hold']
 	local Order = 0
@@ -1522,7 +1459,7 @@ function ESP.Skel:Draw(Esp, On, Data)
 		end
 
 		if OnA and OnB then
-			DrawPair(Pairs[I], X1, Y1, X2, Y2, F['Skeleton_Color'], 1, F['Skeleton_Outline'], F['Skeleton_Outline_Color'])
+			DrawPair(Pairs[I], X1, Y1, X2, Y2, F['SkeletonColor'], 1, F['SkeletonOutline'], F['SkeletonOutlineColor'])
 		else
 			HidePair(Pairs[I])
 		end
@@ -1573,14 +1510,14 @@ function ESP.HL:Draw(Esp, On, Char, Hum)
 	end
 
 	local F, Obj = Esp['F'], self['Inst']
-	local OutTrans = F['Highlight_Outline'] and F['Highlight_Outline_Transparency'] or 1
+	local OutTrans = F['HighlightOutline'] and F['HighlightOutlineTransparency'] or 1
 
 	Update(self, 'Char', Obj, 'Adornee', Char)
-	Update(self, 'Fill', Obj, 'FillColor', F['Highlight_Fill'])
-	Update(self, 'Trans', Obj, 'FillTransparency', F['Highlight_Fill_Transparency'])
-	Update(self, 'OutCol', Obj, 'OutlineColor', F['Highlight_Outline_Color'])
+	Update(self, 'Fill', Obj, 'FillColor', F['HighlightFill'])
+	Update(self, 'Trans', Obj, 'FillTransparency', F['HighlightFillTransparency'])
+	Update(self, 'OutCol', Obj, 'OutlineColor', F['HighlightOutlineColor'])
 	Update(self, 'OutTrans', Obj, 'OutlineTransparency', OutTrans)
-	Update(self, 'Depth', Obj, 'DepthMode', DepthMode[F['Highlight_Depth']] or DepthMode['AlwaysOnTop'])
+	Update(self, 'Depth', Obj, 'DepthMode', DepthMode[F['HighlightDepth']] or DepthMode['AlwaysOnTop'])
 	Update(self, 'On', Obj, 'Enabled', true)
 end
 
@@ -1610,7 +1547,7 @@ function ESP.Trace:Draw(Esp, On, Data)
 	local F = Esp['F']
 	local X2 = Data['X'] + Data['W'] * 0.5
 	local Y2 = Data['Y'] + Data['H'] * 0.5
-	DrawPair(self['Pair'], Esp['FromX'], Esp['FromY'], X2, Y2, F['Tracer_Color'], F['Tracer_Thickness'], F['Tracer_Outline'], F['Tracer_Outline_Color'])
+	DrawPair(self['Pair'], Esp['FromX'], Esp['FromY'], X2, Y2, F['TracerColor'], F['TracerThickness'], F['TracerOutline'], F['TracerOutlineColor'])
 end
 
 ESP.Look = Class(Single)
@@ -1624,7 +1561,7 @@ function ESP.Look:Draw(Esp, On, Data)
 
 	local F, CF = Esp['F'], Head.CFrame
 	local X1, Y1, OnA = Esp:Project(CF.Position)
-	local X2, Y2, OnB = Esp:Project(CF.Position + CF.LookVector * F['Look_Length'])
+	local X2, Y2, OnB = Esp:Project(CF.Position + CF.LookVector * F['LookLength'])
 
 	if not OnA and not OnB then
 		self:Hide()
@@ -1632,7 +1569,7 @@ function ESP.Look:Draw(Esp, On, Data)
 	end
 
 	self['Pair'] = self['Pair'] or NewPair(Esp['LineParent'])
-	DrawPair(self['Pair'], X1, Y1, X2, Y2, F['Look_Color'], F['Look_Thickness'], F['Look_Outline'], F['Look_Outline_Color'])
+	DrawPair(self['Pair'], X1, Y1, X2, Y2, F['LookColor'], F['LookThickness'], F['LookOutline'], F['LookOutlineColor'])
 end
 
 -- // Player object
@@ -1863,13 +1800,13 @@ function ESP:Data(Obj)
 	local Where = Part.Position
 	local Dist = (Where - self['CamPos']).Magnitude
 
-	local Cap = F['Max_Distance'] or 0
+	local Cap = F['MaxDistance'] or 0
 	if Cap > 0 and Dist > Cap then
 		return
 	end
 
 	local Ragdoll = self:IsRagdolled(Hum, Char)
-	local Bx, By, Bw, Bh = self:Bounds(Obj, Char, Part, F['Box_Dynamic'] or Ragdoll)
+	local Bx, By, Bw, Bh = self:Bounds(Obj, Char, Part, F['BoxDynamic'] or Ragdoll)
 	if not Bx then
 		return
 	end
@@ -1940,7 +1877,7 @@ function ESP:Pack()
 	self['Vp'] = Vp
 	self['Px'] = Vp.Y / (2 * Tan(Rad(Fov) * 0.5))
 
-	local Origin = F['Tracer_Origin']
+	local Origin = F['TracerOrigin']
 	if Origin == 'Mouse' then
 		local Mouse = self:Mouse()
 		self['FromX'], self['FromY'] = Mouse.X, Mouse.Y
@@ -1950,29 +1887,29 @@ function ESP:Pack()
 	end
 
 	local Fill = self['FCfg']
-	local Type = F['Fill_Type']
-	local Rot = F['Fill_Rotation']
+	local Type = F['FillType']
+	local Rot = F['FillRotation']
 	if not Rot and Type ~= 'Full' then
-		Rot = FillRot[F['Fill_Half']] or FillRot['Top']
+		Rot = FillRot[F['FillHalf']] or FillRot['Top']
 	end
 
-	Fill['Trans'] = F['Fill_Transparency']
-	Fill['Static'] = F['Fill_Static']
+	Fill['Trans'] = F['FillTransparency']
+	Fill['Static'] = F['FillStatic']
 	Fill['Type'] = Type
-	Fill['Spin'] = F['Fill_Spin']
-	Fill['Rot'] = Fill['Spin'] and Floor(self['Now'] * F['Fill_Spin_Speed']) % 360 or Rot or FillRot['Bottom']
+	Fill['Spin'] = F['FillSpin']
+	Fill['Rot'] = Fill['Spin'] and Floor(self['Now'] * F['FillSpinSpeed']) % 360 or Rot or FillRot['Bottom']
 
 	local Head = self['HeadCfg']
-	Head['Trans'] = F['Head_Fill_Transparency']
-	Head['Static'] = F['Head_Fill_Static']
-	Head['Type'] = F['Head_Fill_Type']
-	Head['Fill'] = F['Head_Fill']
-	Head['Outline'] = F['Head_Outline']
-	Head['OutlineColor'] = F['Head_Outline_Color']
-	Head['Rot'] = F['Head_Spin'] and Floor(self['Now'] * F['Head_Spin_Speed']) % 360 or FillRot['Bottom']
+	Head['Trans'] = F['HeadFillTransparency']
+	Head['Static'] = F['HeadFillStatic']
+	Head['Type'] = F['HeadFillType']
+	Head['Fill'] = F['HeadFill']
+	Head['Outline'] = F['HeadOutline']
+	Head['OutlineColor'] = F['HeadOutlineColor']
+	Head['Rot'] = F['HeadSpin'] and Floor(self['Now'] * F['HeadSpinSpeed']) % 360 or FillRot['Bottom']
 
 	local Health = self['HCfg']
-	local High, Mid, Low = F['Health_High'], F['Health_Mid'], F['Health_Low']
+	local High, Mid, Low = F['HealthHigh'], F['HealthMid'], F['HealthLow']
 	local Cols = Health['Colors']
 
 	if Cols[1] ~= High or Cols[2] ~= Mid or Cols[4] ~= Low then
@@ -1980,17 +1917,17 @@ function ESP:Pack()
 		Health['Stamp'] += 1
 	end
 
-	Health['Text'] = F['Health_Text']
-	Health['Dynamic'] = F['Health_Text_Dynamic']
+	Health['Text'] = F['HealthText']
+	Health['Dynamic'] = F['HealthTextDynamic']
 
 	local Armor = self['ACfg']
-	local ArmorCol = F['Armor_Color']
+	local ArmorCol = F['ArmorColor']
 	if Armor['Colors'][1] ~= ArmorCol then
 		Armor['Colors'][1], Armor['Colors'][2] = ArmorCol, ArmorCol
 		Armor['Stamp'] += 1
 	end
 
-	Armor['Text'] = F['Armor_Text']
+	Armor['Text'] = F['ArmorText']
 	Armor['TextCol'] = ArmorCol
 
 	self:Resolve()
@@ -1998,10 +1935,10 @@ end
 
 function ESP:Resolve()
 	local F, Head = self['F'], self['HeadCfg']
-	self['FCfg']['Col'] = F['Fill_Color']
-	Head['Col'] = F['Head_Fill_Color']
-	Head['Stroke'] = F['Head_Color']
-	self['HCfg']['TextCol'] = F['Health_Text_Color']
+	self['FCfg']['Col'] = F['FillColor']
+	Head['Col'] = F['HeadFillColor']
+	Head['Stroke'] = F['HeadColor']
+	self['HCfg']['TextCol'] = F['HealthTextColor']
 end
 
 function ESP:Recolor(Col)
@@ -2039,8 +1976,8 @@ function ESP:Step()
 
 	local F = self['F']
 	local HL = F['Highlights']
-	local Team = F['Team_Check'] and Local.Team
-	local Menu = getgenv().Library
+	local Team = F['TeamCheck'] and Local.Team
+	local Menu = GetGenv().Library
 	local Shut = Menu and Menu.Window and Menu.Window.Open
 	local Tint = self['Tint']
 	local Keys = self['TintKeys']
@@ -2200,8 +2137,8 @@ function FakeHighlight:Draw(Esp, On, Char)
 	end
 
 	local F = Esp['F']
-	local Fill = F['Highlight_Fill']
-	local Mix = 1 - F['Highlight_Fill_Transparency']
+	local Fill = F['HighlightFill']
+	local Mix = 1 - F['HighlightFillTransparency']
 	if self['Char'] == Char and self['Fill'] == Fill and self['Mix'] == Mix then
 		return
 	end
@@ -2266,7 +2203,7 @@ function Preview:Data(Obj)
 		return Data
 	end
 
-	local Animated = self['F']['Healthbar'] and self['F']['Health_Text']
+	local Animated = self['F']['Healthbar'] and self['F']['HealthText']
 	Data['HealthDirect'] = Animated
 	if Animated then
 		local Pct = Abs(self['Now'] % 2 - 1)
