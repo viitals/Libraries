@@ -41,6 +41,7 @@ local BarTime = 0.2
 
 local Clock = os.clock
 local Floor = math.floor
+local Ceil = math.ceil
 local Max = math.max
 local Min = math.min
 local Abs = math.abs
@@ -65,8 +66,6 @@ local ESP = {
 	Saved = {},
 	Font = Font.new('rbxasset://fonts/families/fs Tahoma Bold 8px.json'),
 	Size = 12,
-	Height = 6,
-	Width = 4,
 
 	Flags = {
 		['Enabled'] = false, ['Team_Check'] = false, ['Max_Distance'] = 0,
@@ -124,7 +123,6 @@ for _, Name in {
 	BodyPart[Name] = true
 end
 
-local BoxDrop = Vec3(0, 0.25, 0)
 local BoxVerts = {
 	Vec3(-1, -1, -1), Vec3(-1, 1, -1), Vec3(-1, 1, 1), Vec3(-1, -1, 1),
 	Vec3(1, -1, -1), Vec3(1, 1, -1), Vec3(1, 1, 1), Vec3(1, -1, 1),
@@ -186,6 +184,62 @@ local function JointPos(Part, Node)
 		return Part.Position
 	end
 	return Part.CFrame * Node[2]
+end
+
+-- // Box fitting
+local function RestPose(Root, Parts)
+	local Rest, Links = { [Root] = CFrame.identity }, {}
+	for I = 1, #Parts + 1 do
+		for _, Joint in (Parts[I] or Root):GetChildren() do
+			if Joint:IsA('JointInstance') and Joint.Part0 and Joint.Part1 then
+				Links[#Links + 1] = Joint
+			end
+		end
+	end
+
+	local Linked = true
+	while Linked do
+		Linked = false
+		for _, Joint in Links do
+			local A, B = Joint.Part0, Joint.Part1
+			if Rest[A] and not Rest[B] then
+				Rest[B] = Rest[A] * Joint.C0 * Joint.C1:Inverse()
+				Linked = true
+			elseif Rest[B] and not Rest[A] then
+				Rest[A] = Rest[B] * Joint.C1 * Joint.C0:Inverse()
+				Linked = true
+			end
+		end
+	end
+
+	local Inv = Root.CFrame:Inverse()
+	for _, Part in Parts do
+		Rest[Part] = Rest[Part] or Inv * Part.CFrame
+	end
+	return Rest
+end
+
+local function Fit(Parts, Rest, Inv, Lo, Hi)
+	local X0, Y0, Z0, X1, Y1, Z1 = Huge, Huge, Huge, -Huge, -Huge, -Huge
+	if Lo then
+		X0, Y0, Z0, X1, Y1, Z1 = Lo.X, Lo.Y, Lo.Z, Hi.X, Hi.Y, Hi.Z
+	end
+
+	for I = 1, #Parts do
+		local Part = Parts[I]
+		local Px, Py, Pz, R00, R01, R02, R10, R11, R12, R20, R21, R22 = (Rest and Rest[Part] or Inv * Part.CFrame):GetComponents()
+		local Size = Part.Size
+		local Hx, Hy, Hz = Size.X * 0.5, Size.Y * 0.5, Size.Z * 0.5
+		local Ex = Abs(R00) * Hx + Abs(R01) * Hy + Abs(R02) * Hz
+		local Ey = Abs(R10) * Hx + Abs(R11) * Hy + Abs(R12) * Hz
+		local Ez = Abs(R20) * Hx + Abs(R21) * Hy + Abs(R22) * Hz
+
+		X0, X1 = Min(X0, Px - Ex), Max(X1, Px + Ex)
+		Y0, Y1 = Min(Y0, Py - Ey), Max(Y1, Py + Ey)
+		Z0, Z1 = Min(Z0, Pz - Ez), Max(Z1, Pz + Ez)
+	end
+
+	return Vec3(X0, Y0, Z0), Vec3(X1, Y1, Z1)
 end
 
 -- // Font
@@ -610,61 +664,38 @@ function ESP:IsRagdolled(Hum, Char)
 	return true
 end
 
-function ESP:StableBounds(X, Y, Depth)
-	local H = Max(Floor((self['Height'] / Depth) * self['Px'] + 0.5), 4)
-	local W = Max(Floor(H * (self['Width'] / self['Height']) + 0.5), 4)
+function ESP:Bounds(Obj, Char, Root, Live)
+	local CF = Root.CFrame
+	if (CF.Position - self['CamPos']):Dot(self['CamLook']) <= 0 then
+		return
+	end
 
-	return Floor(X - W * 0.5 + 0.5), Floor(Y - H * 0.5 + 0.5), W, H
-end
-
-function ESP:DynamicBounds(Obj, Char)
-	local Parts = Obj:Limbs(Char)
+	local Parts = Obj:Limbs(Char, Root, self['Now'])
 	if not Parts[1] then
 		return
 	end
 
-	local MinX3, MinY3, MinZ3 = Huge, Huge, Huge
-	local MaxX3, MaxY3, MaxZ3 = -Huge, -Huge, -Huge
+	local Lo, Hi = Fit(Parts, nil, CF:Inverse(), not Live and Obj['Lo'], Obj['Hi'])
+	local Mid, Half = (Lo + Hi) * 0.5, (Hi - Lo) * 0.5
 
-	for I = 1, #Parts do
-		local Part = Parts[I]
-		local CF, Size = Part.CFrame, Part.Size
-		local A = (CF - Size * 0.5).Position
-		local B = (CF + Size * 0.5).Position
-
-		MinX3, MaxX3 = Min(MinX3, A.X, B.X), Max(MaxX3, A.X, B.X)
-		MinY3, MaxY3 = Min(MinY3, A.Y, B.Y), Max(MaxY3, A.Y, B.Y)
-		MinZ3, MaxZ3 = Min(MinZ3, A.Z, B.Z), Max(MaxZ3, A.Z, B.Z)
-	end
-
-	local Center = Vec3((MinX3 + MaxX3) * 0.5, (MinY3 + MaxY3) * 0.5, (MinZ3 + MaxZ3) * 0.5)
-	local Half = Vec3((MaxX3 - MinX3) * 0.5, (MaxY3 - MinY3) * 0.5, (MaxZ3 - MinZ3) * 0.5)
-
-	local MinX, MinY = Huge, Huge
-	local MaxX, MaxY = -Huge, -Huge
-	local Hits = 0
-
+	local MinX, MinY, MaxX, MaxY = Huge, Huge, -Huge, -Huge
 	for I = 1, 8 do
-		local Sx, Sy, _, Dep = self:Project(Center + Half * BoxVerts[I])
-		if Dep > 0.15 then
-			Hits += 1
-			MinX, MaxX = Min(MinX, Sx), Max(MaxX, Sx)
-			MinY, MaxY = Min(MinY, Sy), Max(MaxY, Sy)
+		local Sx, Sy, _, Depth = self:Project(CF * (Mid + Half * BoxVerts[I]))
+		if Depth <= 0.15 then
+			return
 		end
-	end
-
-	if Hits < 2 then
-		return
+		MinX, MaxX = Min(MinX, Sx), Max(MaxX, Sx)
+		MinY, MaxY = Min(MinY, Sy), Max(MaxY, Sy)
 	end
 
 	local Vp = self['Vp']
-	local W = Max(Floor(MaxX - MinX + 0.5), 4)
-	local H = Max(Floor(MaxY - MinY + 0.5), 4)
-	if W > Vp.X or H > Vp.Y then
+	local X, Y = Floor(MinX) - 3, Floor(MinY) - 3
+	local W, H = Ceil(MaxX) + 3 - X, Ceil(MaxY) + 3 - Y
+	if MaxX < 0 or MaxY < 0 or MinX > Vp.X or MinY > Vp.Y or W > Vp.X or H > Vp.Y then
 		return
 	end
 
-	return Floor(MinX + 0.5), Floor(MinY + 0.5), W, H
+	return X, Y, W, H
 end
 
 -- // Template
@@ -742,7 +773,7 @@ function ESP:Build()
 	local HealthText = Label({
 		Parent = HealthBar,
 		AnchorPoint = Vec(0.5, 0.5),
-		Position = Pos(0.5, 0, 0, 0),
+		Position = Pos(0.5, 0, 0, -1),
 		Size = Pos(0, 0, 0, 12),
 		TextColor3 = Rgb(0, 255, 80),
 	})
@@ -752,7 +783,7 @@ function ESP:Build()
 		Parent = Holder,
 		AnchorPoint = Vec(0, 1),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		Position = Pos(0, 0, 0, -2),
+		Position = Pos(0, 0, 0, -3),
 		Size = Pos(1, 0, 0, 1),
 	})
 	List(Up, {})
@@ -770,7 +801,7 @@ function ESP:Build()
 	local Down = Group({
 		Parent = Holder,
 		AutomaticSize = Enum.AutomaticSize.Y,
-		Position = Pos(0, -1, 1, 3),
+		Position = Pos(0, -1, 1, 1),
 		Size = Pos(1, 2, 0, 0),
 	})
 
@@ -802,6 +833,7 @@ function ESP:Build()
 		LayoutOrder = 100,
 		Size = Pos(1, 0, 0, 0),
 	})
+	Inst('UIPadding', { Parent = ArmorHolder, PaddingTop = UDim.new(0, 3) })
 
 	local ArmorBack = Inst('Frame', { Parent = ArmorHolder, BackgroundColor3 = Black, BorderSizePixel = 0, Size = Pos(1, 0, 0, 2) })
 	Stroke(ArmorBack, true)
@@ -1247,7 +1279,7 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
 	end
 
 	Val = Val or Floor(Pct * 100 + 0.5)
-	Set(Label, 'Visible', Cfg['Text'] and Val ~= 0 and Val ~= 100)
+	Set(Label, 'Visible', Cfg['Text'] and Val > 0 and Pct < 1)
 
 	local Col = Cfg['TextCol']
 	if Cfg['Dynamic'] and Cfg['Stops'] then
@@ -1514,6 +1546,7 @@ function ESP.Object:New(Plr, Esp)
 		Display = Plr.DisplayName,
 		Both = Plr.DisplayName .. ' (@' .. Plr.Name .. ')',
 		Limb = {},
+		Spare = {},
 		Stamp = 0,
 		Data = { Flags = {} },
 		Ready = false,
@@ -1566,7 +1599,7 @@ function ESP.Object:Refresh()
 		self['HeadPart'] = nil
 		self['Tool'] = nil
 		self['ToolStr'] = ''
-		table.clear(self['Limb'])
+		self['Base'] = nil
 		self['Skel']['Char'] = nil
 	end
 
@@ -1597,21 +1630,40 @@ function ESP.Object:Refresh()
 	return Char, Hum, self['Part']
 end
 
-function ESP.Object:Limbs(Char)
-	local Limb = self['Limb']
-	local Now = Clock()
-
-	if Limb[1] and Limb[1].Parent == Char and Now - self['Stamp'] < 0.5 then
-		return Limb
+function ESP.Object:Limbs(Char, Root, Now)
+	if self['Base'] == Root and Now - self['Stamp'] < 0.5 then
+		return self['Limb']
 	end
 
 	self['Stamp'] = Now
+	local Old, Limb, Head = self['Limb'], self['Spare'], self['HeadPart']
 	table.clear(Limb)
 
 	for _, Part in Char:GetChildren() do
 		if BodyPart[Part.Name] and Part:IsA('BasePart') then
 			Limb[#Limb + 1] = Part
+		elseif Head and Part:IsA('Accessory') then
+			local Handle = Part:FindFirstChild('Handle')
+			local Weld = Handle and Handle:FindFirstChildWhichIsA('JointInstance')
+			if Weld and (Weld.Part0 == Head or Weld.Part1 == Head) then
+				Limb[#Limb + 1] = Handle
+			end
 		end
+	end
+
+	self['Limb'], self['Spare'] = Limb, Old
+
+	local Same = self['Base'] == Root and #Old == #Limb
+	for I = 1, Same and #Limb or 0 do
+		if Old[I] ~= Limb[I] then
+			Same = false
+			break
+		end
+	end
+
+	if not Same and Limb[1] then
+		self['Base'] = Root
+		self['Lo'], self['Hi'] = Fit(Limb, RestPose(Root, Limb))
 	end
 
 	return Limb
@@ -1712,30 +1764,8 @@ function ESP:Data(Obj)
 		return
 	end
 
-	local X, Y, On, Depth = self:Project(Where - BoxDrop)
-	if Depth <= 0.15 then
-		return
-	end
-
 	local Ragdoll = self:IsRagdolled(Hum, Char)
-	local Bx, By, Bw, Bh
-
-	if F['Box_Dynamic'] or Ragdoll then
-		local Vp = self['Vp']
-		local Sx, Sy, Sw, Sh = self:StableBounds(X, Y, Depth)
-		local Mx, My = Sw * 2, Sh * 2
-
-		if X > -Mx and Y > -My and X < Vp.X + Mx and Y < Vp.Y + My then
-			Bx, By, Bw, Bh = self:DynamicBounds(Obj, Char)
-		end
-
-		if not Bx and On then
-			Bx, By, Bw, Bh = Sx, Sy, Sw, Sh
-		end
-	elseif On then
-		Bx, By, Bw, Bh = self:StableBounds(X, Y, Depth)
-	end
-
+	local Bx, By, Bw, Bh = self:Bounds(Obj, Char, Part, F['Box_Dynamic'] or Ragdoll)
 	if not Bx then
 		return
 	end
@@ -1753,7 +1783,7 @@ function ESP:Data(Obj)
 	if F['Healthbar'] then
 		local MaxHp, Hp = Hum.MaxHealth, Hum.Health
 		Data['Health'] = MaxHp > 0 and Hp / MaxHp or 0
-		Data['HealthVal'] = Floor(Hp + 0.5)
+		Data['HealthVal'] = Floor(Hp)
 	else
 		Data['Health'] = 0
 		Data['HealthVal'] = 0
@@ -1801,6 +1831,7 @@ function ESP:Pack()
 	local CamCF, Vp, Fov = self:View()
 	self['CamCF'] = CamCF
 	self['CamPos'] = CamCF.Position
+	self['CamLook'] = CamCF.LookVector
 	self['Now'] = Clock()
 	self['Vp'] = Vp
 	self['Px'] = Vp.Y / (2 * Tan(Rad(Fov) * 0.5))
