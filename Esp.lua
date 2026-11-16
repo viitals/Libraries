@@ -555,6 +555,9 @@ local function GuiLine(Parent, Z)
 		if not Steep then
 			Major, Minor, Start, Side = DX, DY, X1, Y1
 		end
+		if Abs(Minor) == 1 then
+			Minor = 0
+		end
 
 		if Abs(Minor) <= StepLimit then
 			local Count, Sign = Abs(Major), Major >= 0 and 1 or -1
@@ -2215,29 +2218,6 @@ function FakeHighlight:Draw(Esp, On, Char)
 	end
 end
 
-local HealthCycle = {
-	{ Time = 0.6, From = 1, To = 1 },
-	{ Time = 1.4, From = 1, To = 0, Style = Enum.EasingStyle.Bounce },
-	{ Time = 0.4, From = 0, To = 0 },
-	{ Time = 1.4, From = 0, To = 1, Style = Enum.EasingStyle.Sine, Direction = Enum.EasingDirection.InOut },
-}
-local HealthLength = 3.8
-
-local function PreviewHealth(Now)
-	local At = Now % HealthLength
-	for _, Phase in HealthCycle do
-		if At < Phase['Time'] then
-			local Alpha = At / Phase['Time']
-			if Phase['Style'] then
-				Alpha = Services['TweenService']:GetValue(Alpha, Phase['Style'], Phase['Direction'] or Enum.EasingDirection.Out)
-			end
-			return Phase['From'] + (Phase['To'] - Phase['From']) * Alpha
-		end
-		At -= Phase['Time']
-	end
-	return 1
-end
-
 local Preview = setmetatable({ HL = FakeHighlight }, { __index = ESP })
 Preview.__index = Preview
 
@@ -2289,7 +2269,7 @@ function Preview:Data(Obj)
 	local Animated = self['F']['Healthbar'] and self['F']['Health_Text']
 	Data['HealthDirect'] = Animated
 	if Animated then
-		local Pct = Clamp(PreviewHealth(self['Now']), 0, 1)
+		local Pct = Abs(self['Now'] % 2 - 1)
 		Data['Health'] = Pct
 		Data['HealthVal'] = Floor(Pct * 100 + 0.5)
 	end
