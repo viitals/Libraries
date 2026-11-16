@@ -1234,7 +1234,7 @@ function ESP.Bar:New(Back, Fill, Text, Vert)
 	return Self
 end
 
-function ESP.Bar:SetGrad(Cfg, From, To)
+function ESP.Bar:SetGrad(Cfg, From, To, Steps)
 	local Grad = self['Grad']
 	if not Grad then
 		return
@@ -1246,8 +1246,9 @@ function ESP.Bar:SetGrad(Cfg, From, To)
 		To = Min(From + 0.001, 1)
 	end
 
-	local QFrom = Floor(From * 40 + 0.5)
-	local QTo = Floor(To * 40 + 0.5)
+	Steps = Steps or 40
+	local QFrom = Floor(From * Steps + 0.5)
+	local QTo = Floor(To * Steps + 0.5)
 	local Stamp = Cfg['Stamp']
 
 	if self['QFrom'] == QFrom and self['QTo'] == QTo and self['Stamp'] == Stamp then
@@ -1283,7 +1284,6 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
 
 	Pct = Clamp(Pct or 0, 0, 1)
 	local Vert = self['Vert']
-	self:SetGrad(Cfg, Vert and 1 - Pct or 0, 1)
 
 	local Now = Clock()
 	if self['To'] == nil then
@@ -1296,6 +1296,7 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
 	local Shown = self['From'] + (self['To'] - self['From']) * (1 - (1 - Alpha) ^ 2)
 	local Filled = Floor(Span * Shown + 0.5)
 	self['Shown'] = Shown
+	self:SetGrad(Cfg, Vert and Span > 0 and 1 - Filled / Span or 0, 1, Max(Span, 1))
 
 	if self['Filled'] ~= Filled or self['Span'] ~= Span then
 		self['Filled'], self['Span'] = Filled, Span
@@ -2149,6 +2150,7 @@ function Chams:Draw(Esp, On, Char)
 	end
 end
 
+local HealthWave = math.pi * 2 / 6
 local Preview = setmetatable({ HL = Chams }, { __index = ESP })
 Preview.__index = Preview
 
@@ -2193,7 +2195,17 @@ end
 
 function Preview:Data(Obj)
 	local Data = ESP.Data(self, Obj)
-	if not Data or not self['F']['EspFlags'] then
+	if not Data then
+		return Data
+	end
+
+	if self['F']['Healthbar'] and self['F']['Health_Text'] then
+		local Pct = 0.55 + 0.45 * math.cos(self['Now'] * HealthWave)
+		Data['Health'] = Pct
+		Data['HealthVal'] = Floor(Pct * 100)
+	end
+
+	if not self['F']['EspFlags'] then
 		return Data
 	end
 
