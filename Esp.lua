@@ -536,14 +536,13 @@ local function GuiLine(Parent, Z)
 		end
 
 		local Half = Floor(Thick / 2)
-		local Long = Hi - Lo + 1 + Half * 2
-		if Steep then
-			Run.Position = Off(Across - Half, Lo - Half)
-			Run.Size = Off(Thick, Long)
-		else
-			Run.Position = Off(Lo - Half, Across - Half)
-			Run.Size = Off(Long, Thick)
+		local X, Y, W, H = Across - Half, Lo - Half, Thick, Hi - Lo + 1 + Half * 2
+		if not Steep then
+			X, Y, W, H = Y, X, H, W
 		end
+
+		Run.Position = Off(X, Y)
+		Run.Size = Off(W, H)
 	end
 
 	local function Layout()
@@ -921,19 +920,11 @@ function ESP:Build()
 	})
 	List(BottomList, { Padding = UDim.new(0, 3) })
 
-	local DistanceText = Label({
-		Parent = BottomList,
-		LayoutOrder = 1,
-		Size = Pos(1, 0, 0, 12),
-		TextYAlignment = Enum.TextYAlignment.Top,
-	})
+	local function InfoLine(Order)
+		return Label({ Parent = BottomList, LayoutOrder = Order, Size = Pos(1, 0, 0, 12), TextYAlignment = Enum.TextYAlignment.Top })
+	end
 
-	local WeaponText = Label({
-		Parent = BottomList,
-		LayoutOrder = 2,
-		Size = Pos(1, 0, 0, 12),
-		TextYAlignment = Enum.TextYAlignment.Top,
-	})
+	local DistanceText, WeaponText = InfoLine(1), InfoLine(2)
 
 	local ArmorHolder = Group({
 		Parent = BottomList,
@@ -1283,7 +1274,7 @@ function ESP.Head:Draw(Esp, On, Data)
 		Update(self, 'Line', self['Stroke'], 'Color', Ring)
 	end
 	if Outlined then
-		Update(self, 'OutCol', self['Outline'], 'Color', Cfg['OutlineColor'] or Black)
+		Update(self, 'OutCol', self['Outline'], 'Color', Cfg['OutlineColor'])
 	end
 
 	Paint(self['Inner'], self['Grad'], Cfg['Fill'], Cfg, self)
@@ -1307,8 +1298,6 @@ function ESP.Bar:New(Back, Fill, Text, Vert)
 
 	return Self
 end
-
-local TextShade = ColorSequence.new(White, Rgb(191, 191, 191))
 
 function ESP.Bar:SetGrad(Cfg, From, To, Steps)
 	local Grad = self['Grad']
@@ -1348,19 +1337,6 @@ function ESP.Bar:SetGrad(Cfg, From, To, Steps)
 
 	Points[#Points + 1] = ColorSequenceKeypoint.new(1, SampleGrad(Colors, Stops, To))
 	Grad.Color = ColorSequence.new(Points)
-end
-
-function ESP.Bar:TextGradient(Cfg, Span, Filled, Height)
-	local Top = Span - Filled - 1 - Height / 2
-	local Points = {}
-
-	for I = 0, 4 do
-		local T = I / 4
-		local Color = SampleGrad(Cfg['Colors'], Cfg['Stops'], (Top + T * Height) / Max(Span, 1))
-		Points[I + 1] = ColorSequenceKeypoint.new(T, Color:Lerp(Black, T * 0.25))
-	end
-
-	return ColorSequence.new(Points)
 end
 
 function ESP.Bar:Draw(On, Pct, Val, Cfg, Span, Direct)
@@ -1406,22 +1382,8 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span, Direct)
 	Set(Label, 'Visible', Cfg['Text'] and Val > 0 and Pct < 1)
 
 	local Col = Cfg['TextCol']
-	if Cfg['Dynamic'] ~= nil then
-		local Grad = self['TextGrad']
-		if not Grad then
-			Grad = Inst('UIGradient', { Parent = Label, Rotation = 90 })
-			self['TextGrad'] = Grad
-		end
-
-		local Key = Cfg['Dynamic'] and (Filled .. ':' .. Span .. ':' .. Cfg['Stamp']) or 'Static'
-		if self['TextKey'] ~= Key then
-			self['TextKey'] = Key
-			Grad.Color = Cfg['Dynamic'] and self:TextGradient(Cfg, Span, Filled, Label.Size.Y.Offset) or TextShade
-		end
-
-		if Cfg['Dynamic'] then
-			Col = White
-		end
+	if Cfg['Dynamic'] and Cfg['Stops'] then
+		Col = SampleGrad(Cfg['Colors'], Cfg['Stops'], Vert and Span > 0 and 1 - Filled / Span or 0)
 	end
 	Update(self, 'Col', Label, 'TextColor3', Col)
 
@@ -1645,7 +1607,7 @@ function ESP.Trace:Draw(Esp, On, Data)
 	local F = Esp['F']
 	local X2 = Data['X'] + Data['W'] * 0.5
 	local Y2 = Data['Y'] + Data['H'] * 0.5
-	DrawPair(self['Pair'], Esp['FromX'], Esp['FromY'], X2, Y2, F['Tracer_Color'], F['Tracer_Thickness'] or 1, F['Tracer_Outline'], F['Tracer_Outline_Color'])
+	DrawPair(self['Pair'], Esp['FromX'], Esp['FromY'], X2, Y2, F['Tracer_Color'], F['Tracer_Thickness'], F['Tracer_Outline'], F['Tracer_Outline_Color'])
 end
 
 ESP.Look = Class(Single)
@@ -1667,7 +1629,7 @@ function ESP.Look:Draw(Esp, On, Data)
 	end
 
 	self['Pair'] = self['Pair'] or NewPair(Esp['LineParent'])
-	DrawPair(self['Pair'], X1, Y1, X2, Y2, F['Look_Color'], F['Look_Thickness'] or 1, F['Look_Outline'], F['Look_Outline_Color'])
+	DrawPair(self['Pair'], X1, Y1, X2, Y2, F['Look_Color'], F['Look_Thickness'], F['Look_Outline'], F['Look_Outline_Color'])
 end
 
 -- // Player object
@@ -2254,20 +2216,20 @@ function FakeHighlight:Draw(Esp, On, Char)
 end
 
 local HealthCycle = {
-	{ Time = 0.8, From = 1, To = 1 },
-	{ Time = 1.6, From = 1, To = 0, Style = Enum.EasingStyle.Quad, Direction = Enum.EasingDirection.InOut },
-	{ Time = 0.5, From = 0, To = 0 },
-	{ Time = 1.3, From = 0, To = 1, Style = Enum.EasingStyle.Bounce, Direction = Enum.EasingDirection.Out },
+	{ Time = 0.6, From = 1, To = 1 },
+	{ Time = 1.4, From = 1, To = 0, Style = Enum.EasingStyle.Bounce },
+	{ Time = 0.4, From = 0, To = 0 },
+	{ Time = 1.4, From = 0, To = 1, Style = Enum.EasingStyle.Sine, Direction = Enum.EasingDirection.InOut },
 }
-local HealthLength = 4.2
+local HealthLength = 3.8
 
 local function PreviewHealth(Now)
 	local At = Now % HealthLength
 	for _, Phase in HealthCycle do
-		if At < Phase['Time'] or Phase == HealthCycle[#HealthCycle] then
-			local Alpha = Clamp(At / Phase['Time'], 0, 1)
+		if At < Phase['Time'] then
+			local Alpha = At / Phase['Time']
 			if Phase['Style'] then
-				Alpha = Services['TweenService']:GetValue(Alpha, Phase['Style'], Phase['Direction'])
+				Alpha = Services['TweenService']:GetValue(Alpha, Phase['Style'], Phase['Direction'] or Enum.EasingDirection.Out)
 			end
 			return Phase['From'] + (Phase['To'] - Phase['From']) * Alpha
 		end
