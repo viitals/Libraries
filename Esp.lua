@@ -502,42 +502,116 @@ local function BoxStrokes(Frame, InlineColor, OutlineColor)
 end
 
 -- // Drawing lines
+local StepLimit = 3
+
 local function GuiLine(Parent, Z)
-	local Frame = Inst('Frame', {
-		Parent = Parent,
-		AnchorPoint = Vec(0.5, 0.5),
-		BorderSizePixel = 0,
-		Visible = false,
-		ZIndex = 10 + Z,
-	})
-	local Ends = { From = Vec(0, 0), To = Vec(0, 0), Thickness = 1 }
+	local function Piece(Anchor)
+		return Inst('Frame', {
+			Parent = Parent,
+			AnchorPoint = Anchor,
+			BorderSizePixel = 0,
+			Visible = false,
+			ZIndex = 10 + Z,
+		})
+	end
+
+	local Frame = Piece(Vec(0.5, 0.5))
+	local Runs = {}
+	local State = { From = Vec(0, 0), To = Vec(0, 0), Thickness = 1, Visible = false, Used = 0 }
+
+	local function Show()
+		local Visible, Used = State['Visible'], State['Used']
+		Frame.Visible = Visible and Used == 0
+		for I, Run in Runs do
+			Run.Visible = Visible and I <= Used
+		end
+	end
+
+	local function PlaceRun(Index, Steep, Lo, Hi, Across, Thick)
+		local Run = Runs[Index]
+		if not Run then
+			Run = Piece(Vec(0, 0))
+			Run.BackgroundColor3 = Frame.BackgroundColor3
+			Runs[Index] = Run
+		end
+
+		local Half = Floor(Thick / 2)
+		local Long = Hi - Lo + 1 + Half * 2
+		if Steep then
+			Run.Position = Off(Across - Half, Lo - Half)
+			Run.Size = Off(Thick, Long)
+		else
+			Run.Position = Off(Lo - Half, Across - Half)
+			Run.Size = Off(Long, Thick)
+		end
+	end
+
+	local function Layout()
+		local A, B, Thick = State['From'], State['To'], State['Thickness']
+		local X1, Y1, X2, Y2 = Floor(A.X), Floor(A.Y), Floor(B.X), Floor(B.Y)
+		local DX, DY = X2 - X1, Y2 - Y1
+		local Steep = Abs(DY) >= Abs(DX)
+		local Major, Minor = DY, DX
+		local Start, Side = Y1, X1
+		if not Steep then
+			Major, Minor, Start, Side = DX, DY, X1, Y1
+		end
+
+		if Abs(Minor) <= StepLimit then
+			local Count, Sign = Abs(Major), Major >= 0 and 1 or -1
+			local Used, RunFrom, RunAcross = 0, 0, nil
+
+			for Step = 0, Count + 1 do
+				local Across = Step <= Count and Floor(Minor * (Count > 0 and Step / Count or 0) + 0.5) or nil
+				if Across ~= RunAcross then
+					if RunAcross then
+						local P1, P2 = Start + Sign * RunFrom, Start + Sign * (Step - 1)
+						Used += 1
+						PlaceRun(Used, Steep, Min(P1, P2), Max(P1, P2), Side + RunAcross, Thick)
+					end
+					RunFrom, RunAcross = Step, Across
+				end
+			end
+
+			State['Used'] = Used
+		else
+			State['Used'] = 0
+
+			local CX1, CY1, CX2, CY2 = X1 + 0.5, Y1 + 0.5, X2 + 0.5, Y2 + 0.5
+			local Length = Floor(math.sqrt(DX * DX + DY * DY) + 0.5) + Thick
+			local CX, CY = (CX1 + CX2) * 0.5, (CY1 + CY2) * 0.5
+			local PX, PY = Floor(CX), Floor(CY)
+
+			Frame.Position = Off(PX, PY)
+			Frame.Size = Off(Length, Thick)
+			Frame.AnchorPoint = Vec(0.5 - (CX - PX) / Length, 0.5 - (CY - PY) / Thick)
+			Frame.Rotation = math.deg(math.atan2(DY, DX))
+		end
+
+		Show()
+	end
 
 	return setmetatable({}, {
 		__index = {
 			Remove = function()
 				Frame:Destroy()
+				for _, Run in Runs do
+					Run:Destroy()
+				end
 			end,
 		},
 		__newindex = function(_, Key, Val)
 			if Key == 'Color' then
 				Frame.BackgroundColor3 = Val
+				for _, Run in Runs do
+					Run.BackgroundColor3 = Val
+				end
 			elseif Key == 'Visible' then
-				Frame.Visible = Val
-			elseif Ends[Key] ~= nil then
-				Ends[Key] = Val
-
-				local A, B, Thick = Ends['From'], Ends['To'], Ends['Thickness']
-				local X1, Y1 = Floor(A.X) + 0.5, Floor(A.Y) + 0.5
-				local X2, Y2 = Floor(B.X) + 0.5, Floor(B.Y) + 0.5
-				local DX, DY = X2 - X1, Y2 - Y1
-				local Length = Floor(math.sqrt(DX * DX + DY * DY) + 0.5) + Thick
-				local CX, CY = (X1 + X2) * 0.5, (Y1 + Y2) * 0.5
-				local PX, PY = Floor(CX), Floor(CY)
-
-				Frame.Position = Off(PX, PY)
-				Frame.Size = Off(Length, Thick)
-				Frame.AnchorPoint = Vec(0.5 - (CX - PX) / Length, 0.5 - (CY - PY) / Thick)
-				Frame.Rotation = math.deg(math.atan2(DY, DX))
+				State['Visible'] = Val
+				Show()
+			elseif State[Key] ~= nil then
+				State[Key] = Val
+				Layout()
 			end
 		end,
 	})
@@ -1234,6 +1308,8 @@ function ESP.Bar:New(Back, Fill, Text, Vert)
 	return Self
 end
 
+local TextShade = ColorSequence.new(White, Rgb(191, 191, 191))
+
 function ESP.Bar:SetGrad(Cfg, From, To, Steps)
 	local Grad = self['Grad']
 	if not Grad then
@@ -1274,7 +1350,20 @@ function ESP.Bar:SetGrad(Cfg, From, To, Steps)
 	Grad.Color = ColorSequence.new(Points)
 end
 
-function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
+function ESP.Bar:TextGradient(Cfg, Span, Filled, Height)
+	local Top = Span - Filled - 1 - Height / 2
+	local Points = {}
+
+	for I = 0, 4 do
+		local T = I / 4
+		local Color = SampleGrad(Cfg['Colors'], Cfg['Stops'], (Top + T * Height) / Max(Span, 1))
+		Points[I + 1] = ColorSequenceKeypoint.new(T, Color:Lerp(Black, T * 0.25))
+	end
+
+	return ColorSequence.new(Points)
+end
+
+function ESP.Bar:Draw(On, Pct, Val, Cfg, Span, Direct)
 	Set(self['Back'], 'Visible', On)
 	Set(self['Back'].Parent, 'Visible', On)
 
@@ -1286,7 +1375,7 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
 	local Vert = self['Vert']
 
 	local Now = Clock()
-	if self['To'] == nil then
+	if self['To'] == nil or Direct then
 		self['From'], self['To'], self['Start'] = Pct, Pct, Now
 	elseif Abs(self['To'] - Pct) >= 0.01 then
 		self['From'], self['To'], self['Start'] = self['Shown'], Pct, Now
@@ -1317,8 +1406,22 @@ function ESP.Bar:Draw(On, Pct, Val, Cfg, Span)
 	Set(Label, 'Visible', Cfg['Text'] and Val > 0 and Pct < 1)
 
 	local Col = Cfg['TextCol']
-	if Cfg['Dynamic'] and Cfg['Stops'] then
-		Col = SampleGrad(Cfg['Colors'], Cfg['Stops'], 1 - Pct)
+	if Cfg['Dynamic'] ~= nil then
+		local Grad = self['TextGrad']
+		if not Grad then
+			Grad = Inst('UIGradient', { Parent = Label, Rotation = 90 })
+			self['TextGrad'] = Grad
+		end
+
+		local Key = Cfg['Dynamic'] and (Filled .. ':' .. Span .. ':' .. Cfg['Stamp']) or 'Static'
+		if self['TextKey'] ~= Key then
+			self['TextKey'] = Key
+			Grad.Color = Cfg['Dynamic'] and self:TextGradient(Cfg, Span, Filled, Label.Size.Y.Offset) or TextShade
+		end
+
+		if Cfg['Dynamic'] then
+			Col = White
+		end
 	end
 	Update(self, 'Col', Label, 'TextColor3', Col)
 
@@ -1760,7 +1863,7 @@ function ESP.Object:Render(Esp, Data)
 	self['Box']:Draw(Esp, F['Boxes'], Data)
 	self['Fill']:Draw(Esp, F['Fill'])
 	self['Text']:Draw(Esp, Data)
-	self['Health']:Draw(F['Healthbar'], Data['Health'], Data['HealthVal'], Esp['HCfg'], H - 2)
+	self['Health']:Draw(F['Healthbar'], Data['Health'], Data['HealthVal'], Esp['HCfg'], H - 2, Data['HealthDirect'])
 	self['Armor']:Draw(F['Armorbar'], 1, 100, Esp['ACfg'], W - 2)
 	self['Flag']:Draw(Esp, F['EspFlags'], Data)
 	self['Skel']:Draw(Esp, F['Skeletons'], Data)
@@ -2107,9 +2210,9 @@ function ESP:Unload()
 end
 
 -- // Menu preview
-local Chams = Class()
+local FakeHighlight = Class()
 
-function Chams:Hide()
+function FakeHighlight:Hide()
 	local Tinted = self['Tinted']
 	if not Tinted then
 		return
@@ -2123,9 +2226,9 @@ function Chams:Hide()
 	self['Char'] = nil
 end
 
-Chams.Kill = Chams.Hide
+FakeHighlight.Kill = FakeHighlight.Hide
 
-function Chams:Draw(Esp, On, Char)
+function FakeHighlight:Draw(Esp, On, Char)
 	if not On or not Char then
 		self:Hide()
 		return
@@ -2150,8 +2253,30 @@ function Chams:Draw(Esp, On, Char)
 	end
 end
 
-local HealthWave = math.pi * 2 / 6
-local Preview = setmetatable({ HL = Chams }, { __index = ESP })
+local HealthCycle = {
+	{ Time = 0.8, From = 1, To = 1 },
+	{ Time = 1.6, From = 1, To = 0, Style = Enum.EasingStyle.Quad, Direction = Enum.EasingDirection.InOut },
+	{ Time = 0.5, From = 0, To = 0 },
+	{ Time = 1.3, From = 0, To = 1, Style = Enum.EasingStyle.Bounce, Direction = Enum.EasingDirection.Out },
+}
+local HealthLength = 4.2
+
+local function PreviewHealth(Now)
+	local At = Now % HealthLength
+	for _, Phase in HealthCycle do
+		if At < Phase['Time'] or Phase == HealthCycle[#HealthCycle] then
+			local Alpha = Clamp(At / Phase['Time'], 0, 1)
+			if Phase['Style'] then
+				Alpha = Services['TweenService']:GetValue(Alpha, Phase['Style'], Phase['Direction'])
+			end
+			return Phase['From'] + (Phase['To'] - Phase['From']) * Alpha
+		end
+		At -= Phase['Time']
+	end
+	return 1
+end
+
+local Preview = setmetatable({ HL = FakeHighlight }, { __index = ESP })
 Preview.__index = Preview
 
 function ESP:CreatePreview(Viewport)
@@ -2199,10 +2324,12 @@ function Preview:Data(Obj)
 		return Data
 	end
 
-	if self['F']['Healthbar'] and self['F']['Health_Text'] then
-		local Pct = 0.55 + 0.45 * math.cos(self['Now'] * HealthWave)
+	local Animated = self['F']['Healthbar'] and self['F']['Health_Text']
+	Data['HealthDirect'] = Animated
+	if Animated then
+		local Pct = Clamp(PreviewHealth(self['Now']), 0, 1)
 		Data['Health'] = Pct
-		Data['HealthVal'] = Floor(Pct * 100)
+		Data['HealthVal'] = Floor(Pct * 100 + 0.5)
 	end
 
 	if not self['F']['EspFlags'] then
