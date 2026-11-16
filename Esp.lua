@@ -219,20 +219,22 @@ local function RestPose(Root, Parts)
 	return Rest
 end
 
-local function Fit(Parts, Rest, Inv, Lo, Hi)
+local function Extent(Rel, Size)
+	local Px, Py, Pz, R00, R01, R02, R10, R11, R12, R20, R21, R22 = Rel:GetComponents()
+	local Hx, Hy, Hz = Size.X * 0.5, Size.Y * 0.5, Size.Z * 0.5
+
+	return Px, Py, Pz,
+		Abs(R00) * Hx + Abs(R01) * Hy + Abs(R02) * Hz,
+		Abs(R10) * Hx + Abs(R11) * Hy + Abs(R12) * Hz,
+		Abs(R20) * Hx + Abs(R21) * Hy + Abs(R22) * Hz
+end
+
+local function Fit(Parts, Rest, Inv)
 	local X0, Y0, Z0, X1, Y1, Z1 = Huge, Huge, Huge, -Huge, -Huge, -Huge
-	if Lo then
-		X0, Y0, Z0, X1, Y1, Z1 = Lo.X, Lo.Y, Lo.Z, Hi.X, Hi.Y, Hi.Z
-	end
 
 	for I = 1, #Parts do
 		local Part = Parts[I]
-		local Px, Py, Pz, R00, R01, R02, R10, R11, R12, R20, R21, R22 = (Rest and Rest[Part] or Inv * Part.CFrame):GetComponents()
-		local Size = Part.Size
-		local Hx, Hy, Hz = Size.X * 0.5, Size.Y * 0.5, Size.Z * 0.5
-		local Ex = Abs(R00) * Hx + Abs(R01) * Hy + Abs(R02) * Hz
-		local Ey = Abs(R10) * Hx + Abs(R11) * Hy + Abs(R12) * Hz
-		local Ez = Abs(R20) * Hx + Abs(R21) * Hy + Abs(R22) * Hz
+		local Px, Py, Pz, Ex, Ey, Ez = Extent(Rest and Rest[Part] or Inv * Part.CFrame, Part.Size)
 
 		X0, X1 = Min(X0, Px - Ex), Max(X1, Px + Ex)
 		Y0, Y1 = Min(Y0, Py - Ey), Max(Y1, Py + Ey)
@@ -240,6 +242,30 @@ local function Fit(Parts, Rest, Inv, Lo, Hi)
 	end
 
 	return Vec3(X0, Y0, Z0), Vec3(X1, Y1, Z1)
+end
+
+local function Shape(Parts, Rest)
+	local Lo, Hi = Fit(Parts, Rest)
+	local Top, Bot = Hi.Y, Lo.Y
+	local Band = (Top - Bot) * 0.15
+	local Wide, TopRing, BotRing = 0, 0, 0
+
+	for _, Part in Parts do
+		local Px, Py, Pz, Ex, Ey, Ez = Extent(Rest[Part], Part.Size)
+		local Radius = math.sqrt((Abs(Px) + Ex) ^ 2 + (Abs(Pz) + Ez) ^ 2)
+		Wide = Max(Wide, Radius)
+		if Py + Ey > Top - Band then
+			TopRing = Max(TopRing, Radius)
+		end
+		if Py - Ey < Bot + Band then
+			BotRing = Max(BotRing, Radius)
+		end
+	end
+
+	return {
+		Vec3(-Wide, Top, -TopRing), Vec3(Wide, Top, -TopRing), Vec3(-Wide, Top, TopRing), Vec3(Wide, Top, TopRing),
+		Vec3(-Wide, Bot, -BotRing), Vec3(Wide, Bot, -BotRing), Vec3(-Wide, Bot, BotRing), Vec3(Wide, Bot, BotRing),
+	}
 end
 
 -- // Font
@@ -665,8 +691,9 @@ function ESP:IsRagdolled(Hum, Char)
 end
 
 function ESP:Bounds(Obj, Char, Root, Live)
-	local CF = Root.CFrame
-	if (CF.Position - self['CamPos']):Dot(self['CamLook']) <= 0 then
+	local Pos = Root.Position
+	local Look = self['CamPos'] - Pos
+	if Look:Dot(self['CamLook']) >= 0 then
 		return
 	end
 
@@ -675,12 +702,20 @@ function ESP:Bounds(Obj, Char, Root, Live)
 		return
 	end
 
-	local Lo, Hi = Fit(Parts, nil, CF:Inverse(), not Live and Obj['Lo'], Obj['Hi'])
-	local Mid, Half = (Lo + Hi) * 0.5, (Hi - Lo) * 0.5
+	local CF = CFrame.new(Pos) * CFrame.Angles(0, math.atan2(Look.X, Look.Z), 0)
+	local Points = Obj['Shape']
+	if Live then
+		local Lo, Hi = Fit(Parts, nil, CF:Inverse())
+		local Mid, Half = (Lo + Hi) * 0.5, (Hi - Lo) * 0.5
+		Points = Obj['Live']
+		for I = 1, 8 do
+			Points[I] = Mid + Half * BoxVerts[I]
+		end
+	end
 
 	local MinX, MinY, MaxX, MaxY = Huge, Huge, -Huge, -Huge
 	for I = 1, 8 do
-		local Sx, Sy, _, Depth = self:Project(CF * (Mid + Half * BoxVerts[I]))
+		local Sx, Sy, _, Depth = self:Project(CF * Points[I])
 		if Depth <= 0.15 then
 			return
 		end
@@ -1547,6 +1582,7 @@ function ESP.Object:New(Plr, Esp)
 		Both = Plr.DisplayName .. ' (@' .. Plr.Name .. ')',
 		Limb = {},
 		Spare = {},
+		Live = {},
 		Stamp = 0,
 		Data = { Flags = {} },
 		Ready = false,
@@ -1663,7 +1699,7 @@ function ESP.Object:Limbs(Char, Root, Now)
 
 	if not Same and Limb[1] then
 		self['Base'] = Root
-		self['Lo'], self['Hi'] = Fit(Limb, RestPose(Root, Limb))
+		self['Shape'] = Shape(Limb, RestPose(Root, Limb))
 	end
 
 	return Limb
