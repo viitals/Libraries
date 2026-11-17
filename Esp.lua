@@ -132,18 +132,34 @@ local BoxVerts = {
 }
 
 -- // Finobe's skeleton system | https://github.com/i77lhm
+-- // R15 nodes are the rig's own motors ({ Part, MotorName }), so bones meet at the real neck, shoulders, elbows, wrists, hips, knees and ankles
+local Motors = {}
+for _, Pair in {
+	{ 'Head', 'Neck' }, { 'UpperTorso', 'Waist' },
+	{ 'LeftUpperArm', 'LeftShoulder' }, { 'LeftLowerArm', 'LeftElbow' }, { 'LeftHand', 'LeftWrist' },
+	{ 'RightUpperArm', 'RightShoulder' }, { 'RightLowerArm', 'RightElbow' }, { 'RightHand', 'RightWrist' },
+	{ 'LeftUpperLeg', 'LeftHip' }, { 'LeftLowerLeg', 'LeftKnee' }, { 'LeftFoot', 'LeftAnkle' },
+	{ 'RightUpperLeg', 'RightHip' }, { 'RightLowerLeg', 'RightKnee' }, { 'RightFoot', 'RightAnkle' },
+} do
+	Motors[Pair[2]] = Pair
+end
+
 local Bones = {
 	R15 = {
-		{ 'Head', 'UpperTorso' },
-		{ 'UpperTorso', 'LowerTorso' },
-		{ 'UpperTorso', 'LeftUpperArm' },
-		{ 'UpperTorso', 'RightUpperArm' },
-		{ 'LeftUpperArm', 'LeftLowerArm' },
-		{ 'RightUpperArm', 'RightLowerArm' },
-		{ 'LowerTorso', 'LeftUpperLeg' },
-		{ 'LowerTorso', 'RightUpperLeg' },
-		{ 'LeftUpperLeg', 'LeftLowerLeg' },
-		{ 'RightUpperLeg', 'RightLowerLeg' },
+		{ 'Head', Motors['Neck'] },
+		{ Motors['Neck'], Motors['Waist'] },
+		{ Motors['Neck'], Motors['LeftShoulder'] },
+		{ Motors['LeftShoulder'], Motors['LeftElbow'] },
+		{ Motors['LeftElbow'], Motors['LeftWrist'] },
+		{ Motors['Neck'], Motors['RightShoulder'] },
+		{ Motors['RightShoulder'], Motors['RightElbow'] },
+		{ Motors['RightElbow'], Motors['RightWrist'] },
+		{ Motors['Waist'], Motors['LeftHip'] },
+		{ Motors['LeftHip'], Motors['LeftKnee'] },
+		{ Motors['LeftKnee'], Motors['LeftAnkle'] },
+		{ Motors['Waist'], Motors['RightHip'] },
+		{ Motors['RightHip'], Motors['RightKnee'] },
+		{ Motors['RightKnee'], Motors['RightAnkle'] },
 	},
 }
 
@@ -1433,12 +1449,25 @@ function ESP.Skel:Build(Char, Now)
 	table.clear(Map)
 
 	local Rig = Char:FindFirstChild('UpperTorso') and Bones['R15'] or Bones['R6']
+	local function Resolve(Node)
+		local Part = Char:FindFirstChild(JointName(Node))
+		if not Part or type(Node) == 'string' or type(Node[2]) ~= 'string' then
+			return Part, Node
+		end
+
+		-- // the motor lives in its Part1, so Part.CFrame * C1 is the joint even while animated
+		local Motor = Part:FindFirstChild(Node[2])
+		if Motor and Motor:IsA('JointInstance') then
+			return Part, { Node[1], Motor.C1.Position }
+		end
+		return nil, nil
+	end
+
 	for I = 1, #Rig do
-		local Bone = Rig[I]
-		local A = Char:FindFirstChild(JointName(Bone[1]))
-		local B = Char:FindFirstChild(JointName(Bone[2]))
+		local A, NodeA = Resolve(Rig[I][1])
+		local B, NodeB = Resolve(Rig[I][2])
 		if A and B then
-			Map[I] = { A, Bone[1], B, Bone[2] }
+			Map[I] = { A, NodeA, B, NodeB }
 		end
 	end
 
