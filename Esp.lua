@@ -73,7 +73,7 @@ local ESP = {
 	Flags = {
 		['Enabled'] = false, ['TeamCheck'] = false, ['MaxDistance'] = 0,
 		['Names'] = false, ['NameType'] = 'Both', ['NameColor'] = White,
-		['Boxes'] = false, ['BoxType'] = '2D', ['BoxDynamic'] = false, ['BoxColor'] = White,
+		['Boxes'] = false, ['BoxType'] = '2D', ['BoxDynamic'] = false, ['BoxColor'] = White, ['BoxOutlineColor'] = Black,
 		['Fill'] = false, ['FillColor'] = White, ['FillType'] = 'Full', ['FillHalf'] = 'Top', ['FillStatic'] = false,
 		['FillRotation'] = false, ['FillTransparency'] = 0.5, ['FillSpin'] = false, ['FillSpinSpeed'] = 60,
 		['Head'] = false, ['HeadColor'] = White, ['HeadFill'] = false, ['HeadFillColor'] = Rgb(255, 0, 75), ['HeadFillType'] = 'Full',
@@ -962,7 +962,7 @@ function ESP:Build()
 		{ Pos(1, 1, 1, 1), Pos(0, 1, 0.3, 0), Vec(1, 1), -180 },
 	}
 
-	local Edges = {}
+	local Edges, EdgeStrokes = {}, {}
 	for I, Data in Layout do
 		Edges[I] = Inst('Frame', {
 			Parent = Corners,
@@ -973,7 +973,7 @@ function ESP:Build()
 			AnchorPoint = Data[3],
 			Rotation = Data[4],
 		})
-		Stroke(Edges[I])
+		EdgeStrokes[I] = Stroke(Edges[I])
 	end
 
 	return Holder, {
@@ -981,6 +981,7 @@ function ESP:Build()
 		Outline = Outline,
 		Corners = Corners,
 		Edges = Edges,
+		EdgeStrokes = EdgeStrokes,
 		Holder = Holder,
 		HolderGrad = HolderGrad,
 		NameText = NameText,
@@ -1046,15 +1047,25 @@ function ESP.Box:Draw(Esp, On, Data)
 		end
 	end
 
-	if not On or self['Col'] == F['BoxColor'] then
+	if not On then
 		return
 	end
 
-	local Col = F['BoxColor']
-	self['Col'] = Col
-	Refs['Inline'].Color = Col
-	for _, Edge in Refs['Edges'] do
-		Edge.BackgroundColor3 = Col
+	local Col, OutCol = F['BoxColor'], F['BoxOutlineColor']
+	if self['Col'] ~= Col then
+		self['Col'] = Col
+		Refs['Inline'].Color = Col
+		for _, Edge in Refs['Edges'] do
+			Edge.BackgroundColor3 = Col
+		end
+	end
+
+	if self['OutCol'] ~= OutCol then
+		self['OutCol'] = OutCol
+		Refs['Outline'].Color = OutCol
+		for _, Edge in Refs['EdgeStrokes'] do
+			Edge.Color = OutCol
+		end
 	end
 end
 
@@ -1612,10 +1623,10 @@ function ESP.Object:Boot(Esp)
 
 	local Refs = {}
 	for Key, Obj in Esp['TempRefs'] do
-		if Key == 'Edges' then
-			Refs['Edges'] = {}
-			for I, Edge in Obj do
-				Refs['Edges'][I] = Lookup[Edge]
+		if type(Obj) == 'table' then
+			Refs[Key] = {}
+			for I, Item in Obj do
+				Refs[Key][I] = Lookup[Item]
 			end
 		else
 			Refs[Key] = Lookup[Obj]
