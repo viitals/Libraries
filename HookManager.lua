@@ -1,11 +1,16 @@
+-- // Variables
 local HookLibrary = {}
 
 HookLibrary.Hooks = {}
 
+local UnpackLimit = 200
+
+
+-- // Helpers
 local function HasOTH()
-    return type(oth) == 'table' 
-    and type(oth.hook) == 'function' 
-    and type(oth.unhook) == 'function' 
+    return type(oth) == 'table'
+    and type(oth.hook) == 'function'
+    and type(oth.unhook) == 'function'
     and type(oth.get_root_callback) == 'function'
 end
 
@@ -26,8 +31,6 @@ local function GetMetamethod(Name)
 
     return Method
 end
-
-local UnpackLimit = 200
 
 local function Unpack(Packed, Start, Stop)
     Start = Start or 1
@@ -107,6 +110,8 @@ local function HookTarget(self, Target, Handler)
     return true
 end
 
+
+-- // Hooks
 function HookLibrary:Hook(Name, Handler)
     if type(Handler) ~= 'function' then
         return false
@@ -198,6 +203,8 @@ function HookLibrary:HookFunction(Target, Handler)
     return HookTarget(self, Target, Handler)
 end
 
+
+-- // Management
 function HookLibrary:IsHooked(Name)
     return self.Hooks[Name] ~= nil
 end
